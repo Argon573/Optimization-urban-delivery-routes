@@ -1,0 +1,6 @@
+fastapi[all]==0.104.1
+requests==2.31.0
+numpy==1.26.4
+pandas==3.0.1
+scikit-learn==1.8.0
+python-dotenv==1.0.0

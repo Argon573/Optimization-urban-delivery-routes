@@ -1,0 +1,138 @@
+from fastapi import APIRouter, HTTPException
+from models import GenerateRequest, GenerateResponse, RouteRequest, RouteResponse, OptimizedRouteResponse, AddressRequest
+from services import (
+    calculate_distance_matrix,
+    calculate_route_distance,
+    nearest_neighbor_route,
+    two_opt,
+    prepare_route_points,
+)
+from utils import get_osrm_distance
+from models import Point
+import random
+import math
+
+router = APIRouter()
+
+
+@router.get("/")
+async def root():
+    return {
+        "message": "Маршрутизатор API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "endpoints": [
+            "/generate - генерация точек",
+            "/route/baseline - расчет базового маршрута",
+            "/route/optimize - оптимизированный маршрут",
+            "/route/matrix - матрица расстояний",
+            "/geocode - получить координаты по адресу",
+            "/health - проверка статуса",
+        ],
+    }
+
+
+@router.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "osrm_available": get_osrm_distance(
+            Point(lat=55.7558, lon=37.6176),
+            Point(lat=55.7658, lon=37.6276),
+        )
+        is not None,
+    }
+
+
+@router.post("/geocode")
+async def geocode(request: AddressRequest):
+    from utils import geocode_address
+
+    coords = geocode_address(request.city, request.street, request.house)
+    if coords is None:
+        raise HTTPException(status_code=404, detail="Не удалось найти координаты по указанному адресу")
+
+    lat, lon = coords
+    return {"city": request.city, "street": request.street, "house": request.house, "lat": lat, "lon": lon}
+
+
+@router.post("/generate", response_model=GenerateResponse)
+async def generate_points(request: GenerateRequest):
+    points = []
+    center = request.city_center
+    radius_deg = request.radius_km / 111.0
+
+    for i in range(request.points_count):
+        angle = random.uniform(0, 2 * math.pi)
+        r = random.uniform(0, radius_deg) * math.sqrt(random.random())
+        lat = center.lat + r * math.cos(angle)
+        lon = center.lon + r * math.sin(angle)
+        points.append(Point(id=i, lat=lat, lon=lon))
+
+    return GenerateResponse(
+        points=points,
+        center=center,
+        radius_km=request.radius_km,
+        message=f"Сгенерировано {request.points_count} точек в радиусе {request.radius_km} км",
+    )
+
+
+@router.post("/route/baseline", response_model=RouteResponse)
+async def calculate_baseline_route(request: RouteRequest):
+    if len(request.points) < 2:
+        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
+
+    sorted_points, has_street, _, _ = prepare_route_points(request)
+    distance_matrix, source = calculate_distance_matrix(sorted_points)
+
+    base_order = [p.id for p in sorted_points]
+    route_indices = list(range(len(sorted_points)))
+    total_distance = calculate_route_distance(route_indices, distance_matrix)
+
+    return RouteResponse(
+        order=base_order,
+        sorted_by_street=has_street,
+        total_distance_meters=total_distance,
+        total_distance_km=total_distance / 1000,
+        point_count=len(sorted_points),
+        matrix_source=source,
+    )
+
+
+@router.post("/route/matrix")
+async def get_distance_matrix(request: RouteRequest):
+    sorted_points, _, _, _ = prepare_route_points(request)
+    distance_matrix, source = calculate_distance_matrix(sorted_points)
+    return {"matrix": distance_matrix.tolist(), "source": source, "points_count": len(sorted_points)}
+
+
+@router.post("/route/optimize", response_model=OptimizedRouteResponse)
+async def optimize_route(request: RouteRequest):
+    if len(request.points) < 2:
+        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
+
+    ordered_points, has_street, start_index, end_index = prepare_route_points(request)
+    distance_matrix, source = calculate_distance_matrix(ordered_points)
+
+    original_order_ids = [p.id for p in ordered_points]
+    original_route_indices = list(range(len(ordered_points)))
+    original_distance = calculate_route_distance(original_route_indices, distance_matrix)
+
+    nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
+    optimized_route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+
+    optimized_distance = calculate_route_distance(optimized_route_indices, distance_matrix)
+    improvement = ((original_distance - optimized_distance) / original_distance) * 100 if original_distance > 0 else 0.0
+
+    optimized_order_ids = [ordered_points[i].id for i in optimized_route_indices]
+
+    return OptimizedRouteResponse(
+        original_order=original_order_ids,
+        sorted_by_street=has_street,
+        optimized_order=optimized_order_ids,
+        original_distance_km=original_distance / 1000,
+        optimized_distance_km=optimized_distance / 1000,
+        improvement_percent=round(improvement, 2),
+        algorithm_used="Nearest Neighbor + 2-opt",
+        matrix_source=source,
+    )
