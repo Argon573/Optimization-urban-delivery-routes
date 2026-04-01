@@ -1,119 +1,117 @@
-import React, { useEffect, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
+import React, {useEffect, useRef} from 'react';
+import styles from './deliveryMap.module.scss';
 
-const DeliveryMap = ({ center = [37.618423, 55.751244], zoom = 12 }) => {
-  const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const rootRef = useRef(null);
+const DeliveryMap = ({center = [37.618423, 55.751244], zoom = 12}) => {
+  const mapRef = useRef(null);
+  const containerRef = useRef(null);
 
-  // Координаты для Яндекс.Карт: [долгота, широта]
   const warehouse = [37.618423, 55.751244];
+
   const deliveryPoints = [
-    { id: 1, coords: [37.588000, 55.735000], title: 'Магазин 1', address: 'ул. Примерная, 1' },
-    { id: 2, coords: [37.608000, 55.765000], title: 'Магазин 2', address: 'ул. Тестовая, 2' },
-    { id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3', address: 'пр. Демонстрационный, 3' }
+    {id: 1, coords: [37.588000, 55.735000], title: 'Магазин 1'},
+    {id: 2, coords: [37.608000, 55.765000], title: 'Магазин 2'},
+    {id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3'}
   ];
 
+  // 📍 Границы МО
+  const bounds = {
+    minLng: 35.0,
+    maxLng: 40.5,
+    minLat: 54.8,
+    maxLat: 56.9
+  };
+
   useEffect(() => {
-    // Ждем загрузки API
-    if (typeof window.ymaps3 === 'undefined') {
-      console.error('❌ Яндекс.Карты не загружены. Проверьте подключение скрипта в index.html');
+    if (mapRef.current) return;
+
+    if (!window.ymaps3) {
+      console.error('ymaps3 not loaded');
       return;
     }
 
-    let map = null;
+    let map;
 
-    const initMap = async () => {
-      try {
-        await window.ymaps3.ready;
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
-        // Создаем карту
-        map = new window.ymaps3.YMap(mapContainerRef.current, {
-          location: {
-            center: center,
-            zoom: zoom,
-          },
-        });
+    const init = async () => {
+      await window.ymaps3.ready;
 
-        // Добавляем базовые слои
-        const schemeLayer = new window.ymaps3.YMapDefaultSchemeLayer();
-        const featuresLayer = new window.ymaps3.YMapDefaultFeaturesLayer();
-        map.addChild(schemeLayer);
-        map.addChild(featuresLayer);
+      map = new window.ymaps3.YMap(containerRef.current, {
+        location: {center, zoom}
+      });
 
-        // Функция для создания маркера
-        const createMarker = (coords, color, icon, title = '') => {
-          const markerElement = document.createElement('div');
-          markerElement.innerHTML = icon;
-          markerElement.style.cssText = `
-            background-color: ${color};
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid white;
-            transform: translate(-50%, -50%);
-            font-size: 18px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
-          `;
+      mapRef.current = map;
 
-          markerElement.onmouseenter = () => {
-            markerElement.style.transform = 'translate(-50%, -50%) scale(1.1)';
-          };
-          markerElement.onmouseleave = () => {
-            markerElement.style.transform = 'translate(-50%, -50%) scale(1)';
-          };
+      const scheme = new window.ymaps3.YMapDefaultSchemeLayer();
+      const features = new window.ymaps3.YMapDefaultFeaturesLayer();
 
-          if (title) {
-            markerElement.title = title;
-          }
+      map.addChild(scheme);
+      map.addChild(features);
 
-          const marker = new window.ymaps3.YMapMarker(
-              { coordinates: coords },
-              markerElement
-          );
-          map.addChild(marker);
-        };
+      // 🔥 ЖЁСТКОЕ ограничение карты
+      map.events.add('update', () => {
+        const loc = map.location;
 
-        // Добавляем маркер склада
-        createMarker(warehouse, '#FBBC04', '📦', 'Склад');
+        const fixedCenter = [
+          clamp(loc.center[0], bounds.minLng, bounds.maxLng),
+          clamp(loc.center[1], bounds.minLat, bounds.maxLat)
+        ];
 
-        // Добавляем маркеры точек доставки
-        deliveryPoints.forEach(point => {
-          createMarker(point.coords, '#EA4335', '📍', point.title);
-        });
+        // если вышли за границы → возвращаем
+        if (
+            fixedCenter[0] !== loc.center[0] ||
+            fixedCenter[1] !== loc.center[1]
+        ) {
+          map.update({
+            location: {
+              center: fixedCenter,
+              zoom: loc.zoom
+            }
+          });
+        }
+      });
 
-        mapInstanceRef.current = map;
-        console.log('✅ Карта Яндекс.Карт успешно загружена');
-      } catch (error) {
-        console.error('❌ Ошибка при создании карты:', error);
-      }
+      const createMarker = (coords, color, icon) => {
+        const el = document.createElement('div');
+
+        el.innerHTML = icon;
+
+        el.style.cssText = `
+          background: ${color};
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: translate(-50%, -50%);
+          cursor: pointer;
+        `;
+
+        const marker = new window.ymaps3.YMapMarker(
+            {coordinates: coords},
+            el
+        );
+
+        map.addChild(marker);
+      };
+
+      createMarker(warehouse, '#fbbc04', '📦');
+
+      deliveryPoints.forEach(p =>
+          createMarker(p.coords, '#ea4335', '📍')
+      );
     };
 
-    initMap();
+    init();
 
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.destroy();
-        mapInstanceRef.current = null;
-      }
-      if (rootRef.current) {
-        rootRef.current.unmount();
-        rootRef.current = null;
-      }
+      mapRef.current?.destroy();
+      mapRef.current = null;
     };
-  }, [center, zoom]);
+  }, []);
 
-  return (
-      <div
-          ref={mapContainerRef}
-          style={{ width: '100%', height: '100%' }}
-      />
-  );
+  return <div ref={containerRef} className={styles.deliveryMap}/>;
 };
 
 export default DeliveryMap;
