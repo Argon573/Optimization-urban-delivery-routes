@@ -1,60 +1,76 @@
 // App.jsx
 import React, { useState } from 'react';
-import DeliveryMap from './components/deliveryMap';
+import DeliveryMap from './components/point_enter_form/DeliveryMap';
+import MapControls from './components/point_enter_form/MapControls';
 
 const App = () => {
-  // Состояние для хранения точек доставки
-  const [deliveryPoints, setDeliveryPoints] = useState([]);
+  const [deliveryPoints, setDeliveryPoints] = useState([
+    { id: 1, coords: [37.588000, 55.735000], title: 'Магазин 1' },
+    { id: 2, coords: [37.608000, 55.765000], title: 'Магазин 2' },
+    { id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3' }
+  ]);
+  const [loading, setLoading] = useState(false);
 
-  // Функция для добавления новой точки
-  const addDeliveryPoint = () => {
-    const newPoint = {
-      id: Date.now(), // уникальный id
-      coords: [37.618423 + (Math.random() - 0.5) * 0.1, 55.751244 + (Math.random() - 0.5) * 0.1],
-      title: `Новый магазин ${deliveryPoints.length + 1}`
-    };
-    setDeliveryPoints([...deliveryPoints, newPoint]);
+  const addPoint = () => {
+    setLoading(true);
+    setTimeout(() => {
+      const newPoint = {
+        id: Date.now(),
+        coords: [
+          37.618423 + (Math.random() - 0.5) * 0.1,
+          55.751244 + (Math.random() - 0.5) * 0.1
+        ],
+        title: `Новый магазин ${deliveryPoints.length + 1}`
+      };
+      setDeliveryPoints([...deliveryPoints, newPoint]);
+      setLoading(false);
+    }, 300);
   };
 
-  // Функция для удаления последней точки
   const removeLastPoint = () => {
-    if (deliveryPoints.length > 0) {
+    if (deliveryPoints.length === 0) return;
+    setLoading(true);
+    setTimeout(() => {
       setDeliveryPoints(deliveryPoints.slice(0, -1));
-    }
+      setLoading(false);
+    }, 300);
   };
 
-  // Функция для очистки всех точек
   const clearAllPoints = () => {
-    setDeliveryPoints([]);
+    setLoading(true);
+    setTimeout(() => {
+      setDeliveryPoints([]);
+      setLoading(false);
+    }, 300);
   };
 
-  // Функция для сброса к начальным точкам
   const resetPoints = () => {
-    setDeliveryPoints([]);
+    setLoading(true);
+    setTimeout(() => {
+      setDeliveryPoints([
+        { id: 1, coords: [37.588000, 55.735000], title: 'Магазин 1' },
+        { id: 2, coords: [37.608000, 55.765000], title: 'Магазин 2' },
+        { id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3' }
+      ]);
+      setLoading(false);
+    }, 300);
   };
 
   return (
-      <div>
-        <div style={{ padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={addDeliveryPoint}>➕ Добавить точку</button>
-          <button onClick={removeLastPoint}>➖ Удалить последнюю</button>
-          <button onClick={clearAllPoints}>🗑️ Очистить все</button>
-          <button onClick={resetPoints}>🔄 Сбросить</button>
-        </div>
-
-        <div style={{ padding: '10px' }}>
-          <strong>Количество точек доставки: {deliveryPoints.length}</strong>
-          <ul>
-            {deliveryPoints.map(point => (
-                <li key={point.id}>{point.title}</li>
-            ))}
-          </ul>
-        </div>
-
+      <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+        <MapControls
+            onAddPoint={addPoint}
+            onRemoveLast={removeLastPoint}
+            onClearAll={clearAllPoints}
+            onReset={resetPoints}
+            pointsCount={deliveryPoints.length}
+            loading={loading}
+        />
         <DeliveryMap
+            center={[37.618423, 55.751244]}
+            zoom={12}
+            warehouse={[37.618423, 55.751244]}
             deliveryPoints={deliveryPoints}
-            // warehouse можно тоже передать, если нужно менять
-            // warehouse={[37.618423, 55.751244]}
         />
       </div>
   );
