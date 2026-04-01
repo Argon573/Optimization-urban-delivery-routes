@@ -1,24 +1,54 @@
-import React, {useEffect, useRef} from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from './deliveryMap.module.scss';
 
-const DeliveryMap = ({center = [37.618423, 55.751244], zoom = 12}) => {
+const DeliveryMap = ({
+                       center = [37.618423, 55.751244],
+                       zoom = 12,
+                       warehouse = [37.618423, 55.751244],
+                       deliveryPoints = []
+                     }) => {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
+  const markersRef = useRef([]);
 
-  const warehouse = [37.618423, 55.751244];
+  // Функция для обновления маркеров
+  const updateMarkers = async (map) => {
+    // Удаляем старые маркеры
+    markersRef.current.forEach(marker => {
+      try {
+        map?.removeChild(marker);
+      } catch (e) {
+        console.warn('Error removing marker:', e);
+      }
+    });
+    markersRef.current = [];
 
-  const deliveryPoints = [
-    {id: 1, coords: [37.588000, 55.735000], title: 'Магазин 1'},
-    {id: 2, coords: [37.608000, 55.765000], title: 'Магазин 2'},
-    {id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3'}
-  ];
+    if (!map) return;
 
-  // 📍 Границы МО
-  const bounds = {
-    minLng: 35.0,
-    maxLng: 40.5,
-    minLat: 54.8,
-    maxLat: 56.9
+    // Импортируем YMapDefaultMarker
+    const { YMapDefaultMarker } = await window.ymaps3.import('@yandex/ymaps3-markers@0.0.1');
+
+    // Добавляем маркер склада
+    const warehouseMarker = new YMapDefaultMarker({
+      coordinates: warehouse,
+      title: 'Склад',
+      color: '#00cc00',
+      draggable: false
+    });
+    map.addChild(warehouseMarker);
+    markersRef.current.push(warehouseMarker);
+
+    // Добавляем маркеры точек доставки
+    deliveryPoints.forEach(point => {
+      const marker = new YMapDefaultMarker({
+        coordinates: point.coords,
+        title: point.title,
+        color: '#ff0000',
+        draggable: false
+      });
+      map.addChild(marker);
+      markersRef.current.push(marker);
+    });
   };
 
   useEffect(() => {
@@ -31,13 +61,11 @@ const DeliveryMap = ({center = [37.618423, 55.751244], zoom = 12}) => {
 
     let map;
 
-    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
-
     const init = async () => {
       await window.ymaps3.ready;
 
       map = new window.ymaps3.YMap(containerRef.current, {
-        location: {center, zoom}
+        location: { center, zoom }
       });
 
       mapRef.current = map;
@@ -48,68 +76,33 @@ const DeliveryMap = ({center = [37.618423, 55.751244], zoom = 12}) => {
       map.addChild(scheme);
       map.addChild(features);
 
-      // 🔥 ЖЁСТКОЕ ограничение карты
-      map.events.add('update', () => {
-        const loc = map.location;
-
-        const fixedCenter = [
-          clamp(loc.center[0], bounds.minLng, bounds.maxLng),
-          clamp(loc.center[1], bounds.minLat, bounds.maxLat)
-        ];
-
-        // если вышли за границы → возвращаем
-        if (
-            fixedCenter[0] !== loc.center[0] ||
-            fixedCenter[1] !== loc.center[1]
-        ) {
-          map.update({
-            location: {
-              center: fixedCenter,
-              zoom: loc.zoom
-            }
-          });
-        }
-      });
-
-      const createMarker = (coords, color, icon) => {
-        const el = document.createElement('div');
-
-        el.innerHTML = icon;
-
-        el.style.cssText = `
-          background: ${color};
-          border-radius: 50%;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: translate(-50%, -50%);
-          cursor: pointer;
-        `;
-
-        const marker = new window.ymaps3.YMapMarker(
-            {coordinates: coords},
-            el
-        );
-
-        map.addChild(marker);
-      };
-
-      createMarker(warehouse, '#fbbc04', '📦');
-
-      deliveryPoints.forEach(p =>
-          createMarker(p.coords, '#ea4335', '📍')
-      );
+      // Инициализируем маркеры
+      await updateMarkers(map);
     };
 
     init();
 
     return () => {
+      markersRef.current.forEach(marker => {
+        try {
+          mapRef.current?.removeChild(marker);
+        } catch (e) {
+          console.warn('Error removing marker:', e);
+        }
+      });
+      markersRef.current = [];
+
       mapRef.current?.destroy();
       mapRef.current = null;
     };
-  }, []);
+  }, []); // Только инициализация карты
+
+  // Отдельный эффект для обновления маркеров при изменении данных
+  useEffect(() => {
+    if (mapRef.current) {
+      updateMarkers(mapRef.current);
+    }
+  }, [warehouse, deliveryPoints]);
 
   return <div ref={containerRef} className={styles.deliveryMap}/>;
 };
