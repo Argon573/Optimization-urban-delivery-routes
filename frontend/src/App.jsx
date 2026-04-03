@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import DeliveryMap from './components/point_enter_form/DeliveryMap';
 import MapControls from './components/point_enter_form/MapControls';
+import Header from './components/layouts/header/Header';
+import Panel from './components/layouts/navigatePanel/Panel';
+import styles from './assets/index.module.scss';
 
 const App = () => {
   const [deliveryPoints, setDeliveryPoints] = useState([
@@ -58,7 +61,9 @@ const App = () => {
 
   return (
       <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+        <Header />
         <MapControls
+            className={styles.mapWrapper}
             onAddPoint={addPoint}
             onRemoveLast={removeLastPoint}
             onClearAll={clearAllPoints}
@@ -72,6 +77,7 @@ const App = () => {
             warehouse={[37.618423, 55.751244]}
             deliveryPoints={deliveryPoints}
         />
+        <Panel />
       </div>
   );
 };
