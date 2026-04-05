@@ -16,18 +16,33 @@
 }
 
 .mapButton {
+  margin-left: clamp(37px, 12.5vw, 60px);
   background: none;
   border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
 }
 
 .routeButton {
   background: none;
   border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .settingsButton {
+  margin-right: clamp(37px, 12.5vw, 60px);
   background: none;
   border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .icons {
@@ -36,7 +51,7 @@
 }
 
 .pin {
-  margin-left: clamp(47px, 12.5vw, 70px);
+
 }
 
 .route {
@@ -44,7 +59,7 @@
 }
 
 .hexagon {
-  margin-right: clamp(47px, 12.5vw, 70px);
+
 }
 
 .circle {
