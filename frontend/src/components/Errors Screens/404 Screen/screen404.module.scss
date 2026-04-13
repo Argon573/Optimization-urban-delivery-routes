@@ -1,0 +1,16 @@
+@use '../../../assets/variables' as var;
+
+.screen404 {
+  width: 100%;
+  height: 100%;
+  background-color: var.$main-color;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.title {
+  font-size: 42px;
+  font-weight: bold;
+  color: var.$main-text-color;
+}

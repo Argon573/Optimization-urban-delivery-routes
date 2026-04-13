@@ -1,0 +1,69 @@
+@use '../../../assets/variables' as var;
+
+.panel {
+  position: absolute;
+  z-index: 100;
+  height: 18vh;
+  width: 100%;
+  background-color: var.$main-color;
+  bottom: 0px;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mapButton {
+  margin-left: clamp(37px, 12.5vw, 60px);
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+}
+
+.routeButton {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.settingsButton {
+  margin-right: clamp(37px, 12.5vw, 60px);
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.icons {
+  width: clamp(40px, 3vh, 80px);
+  height: clamp(40px, 3vh, 80px);
+}
+
+.pin {
+
+}
+
+.route {
+
+}
+
+.hexagon {
+
+}
+
+.circle {
+  width: clamp(24px, 2.5vw, 70px);
+  position: absolute;
+  right: clamp(47px, 14.5vw, 70px);
+}

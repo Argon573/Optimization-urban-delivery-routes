@@ -1,0 +1,18 @@
+.deliveryMap {
+  width: 100%;
+  max-width: 400px;
+  height: 700px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+
+  canvas {
+    z-index: 1;
+  }
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
