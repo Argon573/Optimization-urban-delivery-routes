@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Header from './components/layouts/header/Header';
-import Panel from './components/layouts/navigatePanel/Panel';
-import MapControlRender from './components/point_enter_form/MapControlRender';
-import MapRender from "./components/point_enter_form/MapRender";
+import Map from './components/YMaps/Map';
 import Screen404 from "./components/Errors Screens/404 Screen/Screen404";
 import styles from './assets/app.module.scss'
+import Panel from "./components/layouts/navigatePanel/Panel";
+import RouteScreen from "./components/RouteScreen/RouteScreen";
 
 const App = () => {
   const [deliveryPoints, setDeliveryPoints] = useState([
@@ -14,6 +14,8 @@ const App = () => {
     { id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3' }
   ]);
 
+  //TODO вынести роутинг и данные
+
   return (
       <BrowserRouter>
         <div className={styles.app}>
@@ -21,15 +23,12 @@ const App = () => {
           <Routes>
             <Route path="/" element={
               <>
-                <MapControlRender
-                    deliveryPoints={deliveryPoints}
-                    setDeliveryPoints={setDeliveryPoints}
-                />
-                <MapRender deliveryPoints={deliveryPoints} />
+                <Map />
                 <Panel />
               </>
             } />
             <Route path="/Screen404" element={<Screen404 />} />
+            <Route path="RouteScreen" element={<RouteScreen />} />
           </Routes>
         </div>
       </BrowserRouter>
