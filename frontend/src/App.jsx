@@ -6,6 +6,7 @@ import Screen404 from "./components/Errors Screens/404 Screen/Screen404";
 import styles from './assets/app.module.scss'
 import Panel from "./components/layouts/navigatePanel/Panel";
 import RouteScreen from "./components/RouteScreen/RouteScreen";
+import { PointsProvider } from './components/RouteScreen/PointsContext';
 
 const App = () => {
   const [deliveryPoints, setDeliveryPoints] = useState([
@@ -14,25 +15,36 @@ const App = () => {
     { id: 3, coords: [37.628000, 55.740000], title: 'Магазин 3' }
   ]);
 
+
+
+
+
   //TODO вынести роутинг и данные
 
   return (
       <BrowserRouter>
-        <div className={styles.app}>
-          <Header />
-          <Routes>
-            <Route path="/" element={
-              <>
-                <Map />
-                <Panel />
-              </>
-            } />
-            <Route path="/Screen404" element={<Screen404 />} />
-            <Route path="RouteScreen" element={<RouteScreen />} />
-          </Routes>
-        </div>
+        <PointsProvider>
+          <div className={styles.app}>
+            <Header />
+            <Routes>
+              <Route path="/" element={
+                <>
+                  <Map />
+                  <Panel />
+                </>
+              } />
+              <Route path="/Screen404" element={<Screen404 />} />
+              <Route path="RouteScreen" element={<RouteScreen />} />
+            </Routes>
+            <Panel />
+          </div>
+        </PointsProvider>
       </BrowserRouter>
   );
 };
+
+
+//TODO костыль с панелью, вынести все в layout.jsx
+
 
 export default App;
