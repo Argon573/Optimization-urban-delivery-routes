@@ -12,12 +12,14 @@
    uvicorn main:app --reload
    ```
 
+
 3. **Проверить работу**
    ```
    http://localhost:8000/docs
    ```
 
 ---
+
 
 ## 📡 ВСЕ ЭНДПОИНТЫ API
 
@@ -185,6 +187,31 @@ POST http://localhost:8000/route/optimize
 | `improvement_percent` | На сколько процентов путь короче |
 
 ---
+## 🖼️ Пример запроса для получения картинки маршрута
+
+### Через curl (PNG сохранится в файл route.png):
+
+```bash
+curl -X POST "http://localhost:8000/route/image" ^
+  -H "Content-Type: application/json" ^
+  --output route.png ^
+  -d "{\"points\": [{\"id\": 0, \"lat\": 55.75, \"lon\": 37.61}, {\"id\": 1, \"lat\": 55.76, \"lon\": 37.62}, {\"id\": 2, \"lat\": 55.77, \"lon\": 37.63}]}"
+```
+
+### Через Swagger UI:
+1. Откройте http://localhost:8000/docs
+2. Найдите /route/image → "Try it out"
+3. Вставьте пример:
+   ```json
+   {
+     "points": [
+       {"id": 0, "lat": 55.75, "lon": 37.61},
+       {"id": 1, "lat": 55.76, "lon": 37.62},
+       {"id": 2, "lat": 55.77, "lon": 37.63}
+     ]
+   }
+   ```
+4. Нажмите Execute и скачайте PNG.
 
 ### **4. СЛУЖЕБНЫЕ ЭНДПОИНТЫ**
 

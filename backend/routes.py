@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from models import GenerateRequest, GenerateResponse, RouteRequest, RouteResponse, OptimizedRouteResponse, AddressRequest
 from services import (
     calculate_distance_matrix,
@@ -9,8 +10,8 @@ from services import (
 )
 from utils import get_osrm_distance
 from models import Point
-import random
-import math
+import requests
+from map_render import render_route_map
 
 router = APIRouter()
 
@@ -75,6 +76,53 @@ async def generate_points(request: GenerateRequest):
         radius_km=request.radius_km,
         message=f"Сгенерировано {request.points_count} точек в радиусе {request.radius_km} км",
     )
+
+
+# Эндпоинт: картинка маршрута
+
+@router.post("/route/image")
+async def route_image(
+    request: RouteRequest,
+    mode: str = Query("optimized", description="Порядок точек: original | nn | optimized")
+):
+    """
+    Возвращает PNG-картинку маршрута поверх карты (тайлы OSM).
+    """
+    if len(request.points) < 2:
+        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
+
+
+    # Получаем нужный порядок точек
+    from services import prepare_route_points, calculate_distance_matrix, nearest_neighbor_route, two_opt
+    ordered_points, _, start_index, end_index = prepare_route_points(request)
+    distance_matrix, _ = calculate_distance_matrix(ordered_points)
+
+    if mode == "original":
+        route_indices = list(range(len(ordered_points)))
+    elif mode == "nn":
+        route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
+    else:  # optimized
+        nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
+        route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+
+    # Получаем координаты точек в нужном порядке
+    route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
+
+    # Получаем линию маршрута через OSRM (polyline)
+    osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
+    osrm_url = f"http://router.project-osrm.org/route/v1/driving/{osrm_coords}"
+    osrm_params = {"overview": "full", "geometries": "geojson"}
+    osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=5)
+    if osrm_resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Ошибка запроса к OSRM")
+    osrm_data = osrm_resp.json()
+    if osrm_data.get("code") != "Ok":
+        raise HTTPException(status_code=502, detail="OSRM не вернул маршрут")
+    geometry = osrm_data["routes"][0]["geometry"]["coordinates"]
+
+    # Генерируем картинку через map_render
+    out_buf = render_route_map(route_coords, geometry)
+    return Response(content=out_buf.read(), media_type="image/png")
 
 
 @router.post("/route/baseline", response_model=RouteResponse)
