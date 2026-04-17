@@ -17,7 +17,7 @@ const Panel = () => {
             </button>
           </Link>
 
-          <Link to="RouteScreen">
+          <Link to="route">
             <button className={styles.routeButton}>
               <TbSTurnRight className={`${styles.route} ${styles.icons}`}/>
               <span>Маршрут</span>
