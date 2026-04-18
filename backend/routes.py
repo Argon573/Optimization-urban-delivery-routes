@@ -11,6 +11,9 @@ from services import (
 from utils import get_osrm_distance
 from models import Point
 import requests
+
+import math
+import random
 from map_render import render_route_map
 
 router = APIRouter()
@@ -86,7 +89,7 @@ async def route_image(
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized")
 ):
     """
-    Возвращает PNG-картинку маршрута поверх карты (тайлы OSM).
+    Возвращает GeoJSON маршрута.
     """
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
@@ -120,9 +123,11 @@ async def route_image(
         raise HTTPException(status_code=502, detail="OSRM не вернул маршрут")
     geometry = osrm_data["routes"][0]["geometry"]["coordinates"]
 
-    # Генерируем картинку через map_render
-    out_buf = render_route_map(route_coords, geometry)
-    return Response(content=out_buf.read(), media_type="image/png")
+    # Генерируем GeoJSON через map_render
+    from map_render import route_to_geojson
+    import json
+    geojson = route_to_geojson(route_coords, geometry)
+    return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
 
 
 @router.post("/route/baseline", response_model=RouteResponse)

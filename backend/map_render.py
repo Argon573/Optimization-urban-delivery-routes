@@ -1,3 +1,32 @@
+def route_to_geojson(route_coords, geometry):
+    """
+    Возвращает GeoJSON FeatureCollection для маршрута и точек.
+    route_coords: [(lon, lat), ...] — точки маршрута
+    geometry: [(lon, lat), ...] — координаты линии маршрута
+    """
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": geometry
+                },
+                "properties": {"name": "route"}
+            },
+            *[
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [lon, lat]
+                    },
+                    "properties": {"order": idx}
+                } for idx, (lon, lat) in enumerate(route_coords)
+            ]
+        ]
+    }
 import io
 import math
 from staticmap import StaticMap, CircleMarker, Line

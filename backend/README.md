@@ -7,9 +7,9 @@
    pip install -r requirements.txt
    ```
 
-2. **Запуск сервера**
+2. **Запуск сервера** с папки backend
    ```bash
-   uvicorn main:app --reload
+   python -m uvicorn main:app --reload
    ```
 
 
@@ -187,14 +187,14 @@ POST http://localhost:8000/route/optimize
 | `improvement_percent` | На сколько процентов путь короче |
 
 ---
-## 🖼️ Пример запроса для получения картинки маршрута
 
-### Через curl (PNG сохранится в файл route.png):
+## 🗺️ Пример запроса для получения GeoJSON маршрута
+
+### Через curl (ответ — GeoJSON):
 
 ```bash
 curl -X POST "http://localhost:8000/route/image" ^
   -H "Content-Type: application/json" ^
-  --output route.png ^
   -d "{\"points\": [{\"id\": 0, \"lat\": 55.75, \"lon\": 37.61}, {\"id\": 1, \"lat\": 55.76, \"lon\": 37.62}, {\"id\": 2, \"lat\": 55.77, \"lon\": 37.63}]}"
 ```
 
@@ -211,7 +211,7 @@ curl -X POST "http://localhost:8000/route/image" ^
      ]
    }
    ```
-4. Нажмите Execute и скачайте PNG.
+4. Нажмите Execute и скачайте результат (GeoJSON).
 
 ### **4. СЛУЖЕБНЫЕ ЭНДПОИНТЫ**
 
