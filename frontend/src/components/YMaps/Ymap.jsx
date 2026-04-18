@@ -23,6 +23,11 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
 
     useEffect(() => {
         const load = async () => {
+            if (!routePoints || routePoints.length < 2) {
+                console.log("Недостаточно точек для маршрута");
+                return;
+            }
+
             setLoading(true);
 
             try {
@@ -32,11 +37,10 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
                     lon: point.longitude
                 }));
 
-
                 const data = await getMap(pointsForRoute);
+
                 setGeojson(data);
                 onLoad(data);
-                console.log("Данные загружены:", data.features?.length || 0);
             } catch (e) {
                 console.error(e);
                 onError(e);
@@ -46,12 +50,15 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
         };
 
         load();
-    }, [bbox, routePoints]);
+    }, [routePoints]);
 
     return geojson ? (
         <GeoJSON
             data={geojson}
-            filter={(f) => f.geometry.type !== "Polygon" && f.geometry.type !== "Point"}
+            filter={(f) => {
+                const type = f?.geometry?.type;
+                return type && type !== "Polygon" && type !== "Point";
+            }}
             style={{ color: "#3388ff", weight: 2 }}
             onEachFeature={(feature, layer) => {
                 if (feature.properties?.name) {
@@ -67,7 +74,7 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
 
 const Ymap = ({
                   initialBbox = "55.755864, 37.617698",
-                  initialCenter = [55.755864, 37.617698],
+                  initialCenter,
                   initialZoom = 13,
                   onLoad = () => console.log("Successful load map!"),
                   onError = () => console.log("Error loading map!"),
