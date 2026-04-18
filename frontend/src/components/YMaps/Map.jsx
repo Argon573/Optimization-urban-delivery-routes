@@ -12,8 +12,8 @@ const Map = () => {
     const customIcon = L.divIcon({
         className: "custom-marker",
         html: `<div class="marker-inner"></div>`,
-        iconSize: [50, 50],
-        iconAnchor: [15, 15],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
     });
 
     console.log(points);
@@ -24,8 +24,9 @@ const Map = () => {
                     <Marker key={index} position={[point.latitude, point.longitude]} icon={customIcon}>
                         <Popup>Себе по ебучке тыкни, пес</Popup>
                     </Marker>
-                ))
-            }/>
+                ))}
+            routePoints={points}
+            />
         </div>
     )
 }

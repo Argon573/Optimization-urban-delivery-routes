@@ -1,5 +1,25 @@
 import osmtogeojson from 'osmtogeojson';
 
+export async function getMap(point) {
+    try {
+        const geojson = await fetch('http://localhost:8000/route/image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ points: point })
+        });
+
+        return geojson.json();
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
+
+
+/*
 export async function getMap() {
     const url = 'https://api.openstreetmap.org/api/0.6/map?bbox=-0.125,51.499,-0.122,51.501';
 
@@ -41,3 +61,6 @@ export async function getMap() {
 
 // Пример использования:
 // const geoJsonData = await getMap();
+
+
+ */

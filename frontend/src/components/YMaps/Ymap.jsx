@@ -17,7 +17,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // Компонент для обновления данных при bbox
-const DataLayer = ({ bbox, onLoad, onError, setLoading }) => {
+const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
     const [geojson, setGeojson] = useState(null);
     const map = useMap();
 
@@ -26,7 +26,14 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading }) => {
             setLoading(true);
 
             try {
-                const data = await getMap(bbox);
+                const pointsForRoute = routePoints.map((point, index) => ({
+                    id: index,
+                    lat: point.latitude,
+                    lon: point.longitude
+                }));
+
+
+                const data = await getMap(pointsForRoute);
                 setGeojson(data);
                 onLoad(data);
                 console.log("Данные загружены:", data.features?.length || 0);
@@ -39,12 +46,12 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading }) => {
         };
 
         load();
-    }, [bbox]);
+    }, [bbox, routePoints]);
 
     return geojson ? (
         <GeoJSON
             data={geojson}
-            filter={(f) => f.geometry.type !== "Polygon" && f.geometry.type !== "LineString" && f.geometry.type !== "Point"}
+            filter={(f) => f.geometry.type !== "Polygon" && f.geometry.type !== "Point"}
             style={{ color: "#3388ff", weight: 2 }}
             onEachFeature={(feature, layer) => {
                 if (feature.properties?.name) {
@@ -59,12 +66,13 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading }) => {
 };
 
 const Ymap = ({
-                  initialBbox = "-0.489,51.369,0.236,51.569",
-                  initialCenter = [51.469, -0.1265],
+                  initialBbox = "55.755864, 37.617698",
+                  initialCenter = [55.755864, 37.617698],
                   initialZoom = 13,
                   onLoad = () => console.log("Successful load map!"),
                   onError = () => console.log("Error loading map!"),
-                  Markers
+                  Markers,
+                  routePoints = []
               }) => {
     const [bbox, setBbox] = useState(initialBbox);
     const [loading, setLoading] = useState(false);
@@ -90,6 +98,7 @@ const Ymap = ({
                     onLoad={onLoad}
                     onError={onError}
                     setLoading={setLoading}
+                    routePoints={routePoints}
                 />
             </MapContainer>
 
