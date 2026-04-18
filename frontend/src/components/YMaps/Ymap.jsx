@@ -1,64 +1,115 @@
-import React, { useEffect, useState } from "react";
-import ReactDOM from "react-dom";
-import Marker from "./Marker/Marker"
+import React, { useState, useEffect } from "react";
+import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "./ymap.css";
+import { getMap } from "../../hooks/getMap";
 
+// Фикс иконок
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+    iconUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
-
-//TODO add routes
-
-const Ymap = ({ points }) => {
-    const [components, setComponents] = useState(null);
+// Компонент для обновления данных при bbox
+const DataLayer = ({ bbox, onLoad, onError, setLoading }) => {
+    const [geojson, setGeojson] = useState(null);
+    const map = useMap();
 
     useEffect(() => {
-        const init = async () => {
-            ymaps3.import.registerCdn('https://cdn.jsdelivr.net/npm/{package}', [
-                '@yandex/ymaps3-default-ui-theme@latest'
-            ]);
+        const load = async () => {
+            setLoading(true);
 
-
-            const [ymaps3React] = await Promise.all([ymaps3.import('@yandex/ymaps3-reactify'), ymaps3.ready]);
-            const reactify = ymaps3React.reactify.bindTo(React, ReactDOM);
-
-            const {YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapControls, YMapFeature, YMapMarker} = reactify.module(ymaps3);
-            const {YMapRouteControl, YMapDefaultMarker} = reactify.module(
-                await ymaps3.import('@yandex/ymaps3-default-ui-theme')
-            );
-
-            setComponents({
-                YMap,
-                YMapDefaultSchemeLayer,
-                YMapDefaultFeaturesLayer,
-                YMapMarker,
-                YMapControls,
-                YMapRouteControl
-            });
+            try {
+                const data = await getMap(bbox);
+                setGeojson(data);
+                onLoad(data);
+                console.log("Данные загружены:", data.features?.length || 0);
+            } catch (e) {
+                console.error(e);
+                onError(e);
+            } finally {
+                setLoading(false);
+            }
         };
 
-        init();
-    }, []);
+        load();
+    }, [bbox]);
 
+    return geojson ? (
+        <GeoJSON
+            data={geojson}
+            filter={(f) => f.geometry.type !== "Polygon" && f.geometry.type !== "LineString" && f.geometry.type !== "Point"}
+            style={{ color: "#3388ff", weight: 2 }}
+            onEachFeature={(feature, layer) => {
+                if (feature.properties?.name) {
+                    layer.bindPopup(`
+            <strong>${feature.properties.name}</strong><br/>
+            Тип: ${feature.properties.type || "не указан"}
+          `);
+                }
+            }}
+        />
+    ) : null;
+};
 
-    if (!components) return <div>Loading map...</div>;
+const Ymap = ({
+                  initialBbox = "-0.489,51.369,0.236,51.569",
+                  initialCenter = [51.469, -0.1265],
+                  initialZoom = 13,
+                  onLoad = () => console.log("Successful load map!"),
+                  onError = () => console.log("Error loading map!"),
+                  Markers
+              }) => {
+    const [bbox, setBbox] = useState(initialBbox);
+    const [loading, setLoading] = useState(false);
 
-    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker, YMapControls, YMapRouteControl } = components;
-
+    const updateBbox = (newBbox) => {
+        setBbox(newBbox);
+    };
 
     return (
-        <YMap location={{ center: [37.588144, 55.733842], zoom: 12 }}>
-            <YMapDefaultSchemeLayer />
-            <YMapDefaultFeaturesLayer />
-            {points.map(point => (
-                <Marker key={point.id} point={point} YMapMarker={YMapMarker} />
-            ))}
-            <YMapControls position="top left">
-                <YMapRouteControl
-                    waypoints={[
-                        [37.588144, 55.733842],
-                        [37.617635, 55.755814]
-                    ]}
+        <div className="leaflet" style={{ position: "relative" }}>
+            <MapContainer
+                center={initialCenter}
+                zoom={initialZoom}
+                className="leaflet-container"
+            >
+                <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    attribution="&copy; OpenStreetMap contributors"
                 />
-            </YMapControls>
-        </YMap>
+                {Markers}
+                <DataLayer
+                    bbox={bbox}
+                    onLoad={onLoad}
+                    onError={onError}
+                    setLoading={setLoading}
+                />
+            </MapContainer>
+
+            {loading && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "10px",
+                        right: "10px",
+                        background: "white",
+                        padding: "5px 10px",
+                        borderRadius: "4px",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        zIndex: 1000,
+                    }}
+                >
+                    Загрузка...
+                </div>
+            )}
+        </div>
     );
 };
 
