@@ -1,0 +1,11 @@
+.leaflet-control-attribution {
+  opacity: 0; !important
+}
+
+.leaflet-container {
+  position: relative;
+  width: 100%;
+  height: 1000px;
+  margin: auto;
+  z-index: 1;
+}

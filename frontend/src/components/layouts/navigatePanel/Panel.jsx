@@ -17,10 +17,12 @@ const Panel = () => {
             </button>
           </Link>
 
-          <button className={styles.routeButton}>
-            <TbSTurnRight className={`${styles.route} ${styles.icons}`}/>
-            <span>Маршрут</span>
-          </button>
+          <Link to="route">
+            <button className={styles.routeButton}>
+              <TbSTurnRight className={`${styles.route} ${styles.icons}`}/>
+              <span>Маршрут</span>
+            </button>
+          </Link>
 
           <button className={styles.settingsButton}>
             <FiHexagon className={`${styles.hexagon} ${styles.icons}`}/>
@@ -32,4 +34,5 @@ const Panel = () => {
 
 export default Panel;
 
+//TODO починить иконку
 //<FiCircle className={`${styles.circle} ${styles.icons}`}/>
