@@ -4,6 +4,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ymap.css";
 import { getMap } from "../../hooks/getMap";
+import CustomZoomControl from "./custom control/CustomZoomControl";
+import styles from "./custom control/customZoomControl.module.scss";
 
 // Фикс иконок
 delete L.Icon.Default.prototype._getIconUrl;
@@ -88,6 +90,7 @@ const Ymap = ({
         setBbox(newBbox);
     };
 
+
     return (
         <div className="leaflet" style={{ position: "relative" }}>
             <MapContainer
@@ -99,6 +102,9 @@ const Ymap = ({
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                     attribution="&copy; OpenStreetMap contributors"
                 />
+
+                <CustomZoomControl className={styles.customZoomControl} />
+
                 {Markers}
                 <DataLayer
                     bbox={bbox}

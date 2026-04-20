@@ -1,16 +1,15 @@
 import { LuMapPin } from "react-icons/lu";
 import styles from "./panel.module.scss";
 import { TbSTurnRight } from "react-icons/tb";
-import { FiHexagon } from "react-icons/fi";
-import { FiCircle } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import { Link } from "react-router-dom";
 
-
+// TODO подравнять панель
 
 const Panel = () => {
   return (
         <div className={styles.panel}>
-          <Link to="/Screen404">
+          <Link to="/">
             <button className={styles.mapButton}>
               <LuMapPin className={`${styles.pin} ${styles.icons}`}/>
               <span>Карта</span>
@@ -24,10 +23,12 @@ const Panel = () => {
             </button>
           </Link>
 
-          <button className={styles.settingsButton}>
-            <FiHexagon className={`${styles.hexagon} ${styles.icons}`}/>
-            <span>Настройки</span>
-          </button>
+          <Link to="settings">
+            <button className={styles.settingsButton}>
+              <FiSettings className={`${styles.hexagon} ${styles.icons}`}/>
+              <span>Настройки</span>
+            </button>
+          </Link>
         </div>
   )
 }

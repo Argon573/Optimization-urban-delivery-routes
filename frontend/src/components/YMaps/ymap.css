@@ -9,3 +9,16 @@
   margin: auto;
   z-index: 1;
 }
+
+.leaflet-control-zoom {
+  position: absolute;
+  z-index: 10000 !important;
+  top: 450px;
+  left: 340px;
+}
+
+.custom-icon-zoom {
+  position: absolute !important;
+  bottom: -400px;
+  right: 1px;
+}

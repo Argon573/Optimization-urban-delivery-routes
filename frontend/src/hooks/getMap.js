@@ -1,7 +1,7 @@
 
 export async function getMap(point) {
     try {
-        const geojson = await fetch('http://localhost:8000/route/image', {
+        const geojson = await fetch('http://31.31.196.104:8000/route/image', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

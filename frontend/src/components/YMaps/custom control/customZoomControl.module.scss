@@ -1,0 +1,10 @@
+@use '../../../assets/variables' as var;
+
+rect {
+  width: 30px;
+  height: 30px;
+  display: inline-block;
+  border: var.$main-elements-color solid 1px;
+  border-radius: 50%;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.25);
+}

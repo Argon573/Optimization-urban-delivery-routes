@@ -11,19 +11,29 @@ header {
   align-items: center;
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
-  gap: clamp(10px, 0.83vw, 25px)
+  gap: clamp(10px, 0.83vw, 25px);
+  box-shadow: 0 0 10px 0 #00000040;
 }
 
 .p1 {
-  font-weight: 700;
+  font-weight: 600;
   font-style: italic;
-  font-size: 32px;
   line-height: 100%;
   color: vars.$main-text-color;
+  font-size: 18px;
+  margin-top: 15px;
 }
 
 .logo {
-  margin-left: clamp(10px, 3vh, 24px);
+  margin-left: clamp(20px, 3vh, 24px);
   width: 6.5vh;
   height: 6.5vh;
+}
+
+.opty {
+  color: #6C63FF;
+}
+
+.route {
+
 }

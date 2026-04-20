@@ -18,6 +18,10 @@ const router = createBrowserRouter([
             {
                 path: "/route",
                 element: <RouteScreen />,
+            },
+            {
+                path: "/settings",
+                element: <Settings />,
             }
         ]
     }
