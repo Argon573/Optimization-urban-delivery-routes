@@ -2,38 +2,34 @@ import { LuMapPin } from "react-icons/lu";
 import styles from "./panel.module.scss";
 import { TbSTurnRight } from "react-icons/tb";
 import { FiSettings } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
-// TODO подравнять панель
 
 const Panel = () => {
   return (
         <div className={styles.panel}>
-          <Link to="/">
-            <button className={styles.mapButton}>
-              <LuMapPin className={`${styles.pin} ${styles.icons}`}/>
+          <NavLink to="/" className={({ isActive }) => `${isActive ? styles.active : ''}`} >
+            <button className={`${styles.mapButton} ${styles.button}`}>
+              <LuMapPin className={`${styles.icons}`}/>
               <span>Карта</span>
             </button>
-          </Link>
+          </NavLink>
 
-          <Link to="route">
-            <button className={styles.routeButton}>
-              <TbSTurnRight className={`${styles.route} ${styles.icons}`}/>
+          <NavLink to="route" className={({ isActive }) => `${isActive ? styles.active : ''}`}>
+            <button className={`${styles.button}`}>
+              <TbSTurnRight className={`${styles.icons}`}/>
               <span>Маршрут</span>
             </button>
-          </Link>
+          </NavLink>
 
-          <Link to="settings">
-            <button className={styles.settingsButton}>
-              <FiSettings className={`${styles.hexagon} ${styles.icons}`}/>
+          <NavLink to="settings" className={({ isActive }) => `${isActive ? styles.active : ''}`}>
+            <button className={`${styles.settingsButton} ${styles.button}`}>
+              <FiSettings className={styles.icons}/>
               <span>Настройки</span>
             </button>
-          </Link>
+          </NavLink>
         </div>
   )
 }
 
 export default Panel;
-
-//TODO починить иконку
-//<FiCircle className={`${styles.circle} ${styles.icons}`}/>
