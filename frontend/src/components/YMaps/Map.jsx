@@ -23,9 +23,9 @@ const Map = () => {
 
     const userPoint = userPosition
         ? {
-            latitude: userPosition[0],
-            longitude: userPosition[1],
-            name: "Вы"
+            id: -1,
+            lat: userPosition[0],
+            lon: userPosition[1]
         }
         : null;
 
@@ -52,7 +52,7 @@ const Map = () => {
     return (
         <div className={styles.map}>
             {userPosition && <Ymap
-                initialCenter={userPoint===null ? [55.755864, 37.617698] : [userPoint.latitude, userPoint.longitude] }
+                initialCenter={userPoint===null ? [55.755864, 37.617698] : [userPoint.lat, userPoint.lon] }
                 Markers={
                     <>
                         {points.map((point, index) => (
@@ -72,7 +72,8 @@ const Map = () => {
                         )}
                     </>
                 }
-                routePoints={[userPoint, ...points]}
+                routePoints={points}
+                startPoint={userPoint}
             />}
         </div>
     )

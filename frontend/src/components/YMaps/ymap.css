@@ -22,3 +22,8 @@
   bottom: -400px;
   right: 1px;
 }
+
+.leaflet-container {
+  width: 100vw;
+  height: 100vh;
+}

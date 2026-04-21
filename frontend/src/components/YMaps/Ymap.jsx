@@ -19,12 +19,12 @@ L.Icon.Default.mergeOptions({
 });
 
 // Компонент для обновления данных при bbox
-const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
+const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPoint }) => {
     const [geojson, setGeojson] = useState(null);
-    const map = useMap();
 
     useEffect(() => {
         const load = async () => {
+
             if (!routePoints || routePoints.length < 2) {
                 console.log("Недостаточно точек для маршрута");
                 return;
@@ -39,7 +39,7 @@ const DataLayer = ({ bbox, onLoad, onError, setLoading, routePoints }) => {
                     lon: point.longitude
                 }));
 
-                const data = await getMap(pointsForRoute);
+                const data = await getMap(startPoint, endPoint, pointsForRoute);
 
                 setGeojson(data);
                 onLoad(data);
@@ -81,14 +81,12 @@ const Ymap = ({
                   onLoad = () => console.log("Successful load map!"),
                   onError = () => console.log("Error loading map!"),
                   Markers,
-                  routePoints = []
+                  routePoints = [],
+                  startPoint = null,
+                  endPoint = null,
               }) => {
     const [bbox, setBbox] = useState(initialBbox);
     const [loading, setLoading] = useState(false);
-
-    const updateBbox = (newBbox) => {
-        setBbox(newBbox);
-    };
 
 
     return (
@@ -112,6 +110,8 @@ const Ymap = ({
                     onError={onError}
                     setLoading={setLoading}
                     routePoints={routePoints}
+                    startPoint={startPoint}
+                    endPoint={endPoint}
                 />
             </MapContainer>
 
