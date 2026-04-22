@@ -1,0 +1,37 @@
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import RouteScreen from "../components/RouteScreen/RouteScreen";
+import Settings from "../components/settings/Settings";
+import Screen404 from "../components/Errors/404 Screen/Screen404";
+import Layout from "../components/layouts/Layout";
+import Map from "../components/YMaps/Map";
+import Generation from '../components/settings/generation/Generation'
+
+const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <Layout/>,
+        errorElement: <Screen404/>,
+        children: [
+            {
+                index: true,
+                element: <Map/>,
+            },
+            {
+                path: "/route",
+                element: <RouteScreen/>,
+            },
+            {
+                path: "/settings",
+                element: <Settings/>,
+            },
+            {
+                path: "/settings/generation",
+                element: <Generation/>
+            }
+        ]
+        }
+    ]
+)
+export const AppRouter = () => {
+    return <RouterProvider router={router} />;
+};
