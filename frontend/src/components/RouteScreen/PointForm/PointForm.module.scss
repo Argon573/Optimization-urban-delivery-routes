@@ -4,16 +4,22 @@ $marker-color: #6C63FF;
 
 .list {
   border: #000000 1px solid;
-  border-radius: 4px;
+  border-radius: 10px;
   display: grid;
   gap: 5px;
-  width: 89%;
+  width: 100%;
 }
 
 .pointSection {
   display: flex;
-  gap: 5px;
-  border-bottom: 1px solid $marker-color;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px 5px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid $marker-color;
+  }
 }
 
 .marker {
@@ -25,6 +31,27 @@ $marker-color: #6C63FF;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px; // подбирается, чтобы число помещалось
+  font-size: 8px;
   line-height: 1;
+}
+
+.address {
+  font-size: 14px;
+  font-weight: 500;
+  color: var.$main-text-color;
+}
+
+.inputForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-content: start;
+  width: 100%;
+  max-height: 130px;
+}
+
+.autoComplete {
+  width: 100%;
+  height: 100px;
+  overflow: scroll;
 }

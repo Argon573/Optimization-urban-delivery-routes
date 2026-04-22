@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePhotonSearch } from "../../../hooks/usePhotonSearch";
+import styles from "./PointForm.module.scss";
 
 const PointForm = ({ onSelect }) => {
     const [query, setQuery] = useState('');
@@ -22,8 +23,8 @@ const PointForm = ({ onSelect }) => {
     };
 
     return (
-        <div style={{ position: "relative" }}>
-            <label>Адрес:</label>
+        <div style={{ position: "relative" }} className={styles.inputForm}>
+            <label>Адрес</label>
             <input
                 type="text"
                 value={query}
@@ -32,7 +33,7 @@ const PointForm = ({ onSelect }) => {
             />
 
             {suggestions.length > 0 && (
-                <ul>
+                <ul className={styles.autoComplete}>
                     {suggestions.map((item, index) => (
                         <li
                             key={index}
