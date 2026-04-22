@@ -198,6 +198,24 @@ curl -X POST "http://localhost:8000/route/image" ^
   -d "{\"points\": [{\"id\": 0, \"lat\": 55.75, \"lon\": 37.61}, {\"id\": 1, \"lat\": 55.76, \"lon\": 37.62}, {\"id\": 2, \"lat\": 55.77, \"lon\": 37.63}]}"
 ```
 
+### Пример с start_point, end_point и промежуточными точками
+
+```bash
+curl -X POST "http://localhost:8000/route/image" ^
+  -H "Content-Type: application/json" ^
+  -d "{
+    \"start_point\": {\"city\": \"Москва\", \"street\": \"Тверская ул.\", \"house\": \"1\"},
+    \"end_point\": {\"city\": \"Москва\", \"street\": \"Пушкинская ул.\", \"house\": \"10\"},
+    \"points\": [
+      {\"id\": 0, \"lat\": 55.7623, \"lon\": 37.6245, \"street\": \"Авиамоторная\"},
+      {\"id\": 1, \"lat\": 55.7489, \"lon\": 37.6098, \"street\": \"Арбат\"},
+      {\"id\": 2, \"lat\": 55.7591, \"lon\": 37.6312, \"street\": \"Ленина\"},
+      {\"id\": 3, \"lat\": 55.7512, \"lon\": 37.6156, \"street\": \"Мира\"},
+      {\"id\": 4, \"lat\": 55.7645, \"lon\": 37.6023, \"street\": \"Садовая\"}
+    ]
+  }"
+```
+
 ### Через Swagger UI:
 1. Откройте http://localhost:8000/docs
 2. Найдите /route/image → "Try it out"

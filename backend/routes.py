@@ -1,3 +1,7 @@
+# Эндпоинт для автокомплита адресов через Photon
+
+
+from fastapi import Query as FastAPIQuery
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from models import GenerateRequest, GenerateResponse, RouteRequest, RouteResponse, OptimizedRouteResponse, AddressRequest
@@ -8,15 +12,75 @@ from services import (
     two_opt,
     prepare_route_points,
 )
-from utils import get_osrm_distance
+from utils import get_osrm_distance, resolve_points_with_coordinates
 from models import Point
 import requests
-
 import math
 import random
 from map_render import render_route_map
 
 router = APIRouter()
+
+@router.get("/address/photon_suggest")
+async def photon_suggest_address(
+    q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
+    limit: int = FastAPIQuery(5, description="Максимум результатов")
+):
+    """
+    Возвращает список подходящих адресов по подстроке через Photon (OSM).
+    """
+    url = "https://photon.komoot.io/api/"
+    params = {"q": q, "limit": limit}
+    headers = {"User-Agent": "backend-routemapper/1.0"}
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=3)
+        resp.raise_for_status()
+        data = resp.json()
+        suggestions = []
+        for feature in data.get("features", []):
+            prop = feature.get("properties", {})
+            suggestions.append({
+                "name": prop.get("name"),
+                "street": prop.get("street"),
+                "city": prop.get("city"),
+                "country": prop.get("country"),
+                "postcode": prop.get("postcode"),
+                "osm_value": prop.get("osm_value"),
+                "lat": feature.get("geometry", {}).get("coordinates", [None, None])[1],
+                "lon": feature.get("geometry", {}).get("coordinates", [None, None])[0],
+                "full": prop.get("label")
+            })
+        return {"suggestions": suggestions}
+    except Exception as e:
+        return {"suggestions": [], "error": str(e)}
+    
+# Эндпоинт для автокомплита адресов
+@router.get("/address/suggest")
+async def suggest_address(
+    q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
+    limit: int = FastAPIQuery(5, description="Максимум результатов")
+):
+    """
+    Возвращает список подходящих адресов по подстроке через Nominatim.
+    """
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": q, "format": "json", "addressdetails": 1, "limit": limit, "autocomplete": 1}
+    headers = {"User-Agent": "backend-routemapper/1.0"}
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=3)
+        resp.raise_for_status()
+        data = resp.json()
+        suggestions = []
+        for item in data:
+            suggestions.append({
+                "display_name": item.get("display_name"),
+                "lat": item.get("lat"),
+                "lon": item.get("lon"),
+                "address": item.get("address", {})
+            })
+        return {"suggestions": suggestions}
+    except Exception as e:
+        return {"suggestions": [], "error": str(e)}
 
 
 @router.get("/")
@@ -60,6 +124,19 @@ async def geocode(request: AddressRequest):
     return {"city": request.city, "street": request.street, "house": request.house, "lat": lat, "lon": lon}
 
 
+
+# Проверка существования адреса (отдельный эндпоинт)
+@router.post("/address/validate")
+async def validate_address(request: AddressRequest):
+    from utils import geocode_address
+    coords = geocode_address(request.city, request.street, request.house)
+    if coords is None:
+        return {"valid": False, "message": "Адрес не найден"}
+    lat, lon = coords
+    return {"valid": True, "lat": lat, "lon": lon}
+
+
+# Генерация точек с проверкой существования адреса (если заданы city/street)
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_points(request: GenerateRequest):
     points = []
@@ -72,6 +149,12 @@ async def generate_points(request: GenerateRequest):
         lat = center.lat + r * math.cos(angle)
         lon = center.lon + r * math.sin(angle)
         points.append(Point(id=i, lat=lat, lon=lon))
+
+    # Проверка существования адресов для точек, если заданы city/street
+    try:
+        resolve_points_with_coordinates(points)
+    except HTTPException as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка при проверке адресов: {e.detail}")
 
     return GenerateResponse(
         points=points,
