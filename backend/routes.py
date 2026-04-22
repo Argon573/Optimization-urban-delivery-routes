@@ -53,35 +53,6 @@ async def photon_suggest_address(
         return {"suggestions": suggestions}
     except Exception as e:
         return {"suggestions": [], "error": str(e)}
-    
-# Эндпоинт для автокомплита адресов
-@router.get("/address/suggest")
-async def suggest_address(
-    q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
-    limit: int = FastAPIQuery(5, description="Максимум результатов")
-):
-    """
-    Возвращает список подходящих адресов по подстроке через Nominatim.
-    """
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": q, "format": "json", "addressdetails": 1, "limit": limit, "autocomplete": 1}
-    headers = {"User-Agent": "backend-routemapper/1.0"}
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=3)
-        resp.raise_for_status()
-        data = resp.json()
-        suggestions = []
-        for item in data:
-            suggestions.append({
-                "display_name": item.get("display_name"),
-                "lat": item.get("lat"),
-                "lon": item.get("lon"),
-                "address": item.get("address", {})
-            })
-        return {"suggestions": suggestions}
-    except Exception as e:
-        return {"suggestions": [], "error": str(e)}
-
 
 @router.get("/")
 async def root():
@@ -96,6 +67,7 @@ async def root():
             "/route/matrix - матрица расстояний",
             "/geocode - получить координаты по адресу",
             "/health - проверка статуса",
+            "/address/photon_suggest - автокомплит адресов через Photon (рекомендуется)",
         ],
     }
 
