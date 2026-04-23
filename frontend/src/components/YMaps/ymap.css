@@ -1,5 +1,5 @@
 .leaflet-control-attribution {
-  opacity: 0; !important
+  opacity: 0 !important;
 }
 
 .leaflet-container {

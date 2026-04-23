@@ -12,7 +12,7 @@ const Map = () => {
 
     const { points, removePoint } = usePoints();
     const [userPosition, setUserPosition] = useState(null);
-
+    /*
     useEffect(() => {
         getUserPosition().then(pos => {
             setUserPosition(pos);
@@ -28,6 +28,17 @@ const Map = () => {
             lon: userPosition[1]
         }
         : null;
+    */
+
+    useEffect(() => {
+        setUserPosition([56.840508, 60.650206])
+    }, [])
+
+    const userPoint = {
+        id: -1,
+        lat: 56.840508,
+        lon: 60.650206
+    }
 
     console.log(userPoint)
 
@@ -51,7 +62,7 @@ const Map = () => {
     console.log(points);
     return (
         <div className={styles.map}>
-            {userPosition && <Ymap
+            {userPoint && <Ymap
                 initialCenter={userPoint===null ? [55.755864, 37.617698] : [userPoint.lat, userPoint.lon] }
                 Markers={
                     <>

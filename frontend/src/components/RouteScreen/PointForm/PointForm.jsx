@@ -24,13 +24,15 @@ const PointForm = ({ onSelect }) => {
 
     return (
         <div style={{ position: "relative" }} className={styles.inputForm}>
-            <label>Адрес</label>
             <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Начните вводить адрес..."
+                className={styles.inputPoint}
             />
+
+
 
             {suggestions.length > 0 && (
                 <ul className={styles.autoComplete}>
@@ -38,6 +40,7 @@ const PointForm = ({ onSelect }) => {
                         <li
                             key={index}
                             onClick={() => handleSelect(item)}
+                            className={styles.autocompleteElement}
                         >
                             {item.street || ''} {item.name}, {item.city}
                         </li>

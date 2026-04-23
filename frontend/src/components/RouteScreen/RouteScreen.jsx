@@ -1,22 +1,34 @@
 import { usePoints } from './PointsContext';
 import styles from "./routescreen.module.scss";
-import PointForm from "./PointForm/PointForm";
 import PointList from "./PointForm/PointList";
-import StartPointForm from './Start Point Form/StartPointForm'
+import Form from "./Form/Form";
 
 const RouteScreen = () => {
     const { points, addPoint } = usePoints();
 
     return (
         <div className={styles.container}>
-            <StartPointForm />
+            <Form
+                title="Отправная точка"
+                placeholder="Мое местоположение"
+            />
+
+            <Form
+                title="Вид транспорта"
+                placeholder="Автомобиль"
+            />
+
+
             <div className={styles.listContainer}>
                 <h3>Точки маршрута</h3>
 
-                <PointList points={points} />
+                <PointList
+                    points={points}
+                    addPoint={addPoint}
+                />
             </div>
 
-            <PointForm onSelect={addPoint} />
+
         </div>
     );
 };
