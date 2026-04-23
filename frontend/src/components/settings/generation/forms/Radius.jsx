@@ -3,11 +3,11 @@ import styles from './forms.module.scss'
 const Radius = () =>  {
     return (
         <div>
-            <span>Хуй</span>
+            <span>Радиус</span>
             <input
                 className={styles.radius}
                 type="number"
-                placeholder="Введи радиус"
+                placeholder="Введите радиус"
             />
         </div>
     )

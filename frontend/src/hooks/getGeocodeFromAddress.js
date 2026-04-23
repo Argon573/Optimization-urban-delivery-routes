@@ -2,7 +2,7 @@
 
 export async function getGeocodeFromAddress (address) {
     try {
-        const geocode = await fetch('http://10.40.241.48:8000/route/image', {
+        const geocode = await fetch('http://localhost:8000/geocode', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -13,6 +13,11 @@ export async function getGeocodeFromAddress (address) {
                 house: address.house
             })
         });
+
+
+        if (!geocode.ok) {
+            return null;
+        }
 
         return geocode.json();
     }

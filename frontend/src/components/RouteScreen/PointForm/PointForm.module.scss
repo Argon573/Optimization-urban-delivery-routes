@@ -94,3 +94,46 @@ $marker-color: #6C63FF;
 .autocompleteElement {
 
 }
+
+.errorMessage {
+  color: red;
+}
+
+.submitButton {
+  height: 90%;
+  border: none;
+  background-color: transparent;
+}
+
+
+.loader {
+  width: 25px;
+  height: 25px;
+  border: 5px solid #ddd;
+  border-top: 5px solid grey; // цвет активной части
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.inputWrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+.checkmark {
+  width: 100%;
+  height: 100%;
+}
+
+.inputPoint {
+  width: 100%;
+}
