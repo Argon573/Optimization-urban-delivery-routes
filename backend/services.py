@@ -41,7 +41,10 @@ def calculate_distance_matrix(points: List[Point], method: DistanceMethod = Dist
     return matrix, source_used.value
 
 
-def calculate_route_distance(route_order: List[int], distance_matrix: np.ndarray) -> float:
+def calculate_route_distance(
+    route_order: List[int], 
+    distance_matrix: np.ndarray
+    ) -> float:
     total = 0.0
     for k in range(len(route_order) - 1):
         total += distance_matrix[route_order[k]][route_order[k + 1]]
@@ -79,7 +82,13 @@ def nearest_neighbor_route(
     return route
 
 
-def two_opt(route: List[int], distance_matrix: np.ndarray, fixed_start: bool = False, fixed_end: bool = False, max_iterations: int = 100) -> List[int]:
+def two_opt(
+    route: List[int], 
+    distance_matrix: np.ndarray, 
+    fixed_start: bool = False, 
+    fixed_end: bool = False, 
+    max_iterations: int = 100
+    ) -> List[int]:
     """Оптимизация маршрута методом 2-opt с расчетом только измененных ребер."""
     best = route.copy()
     best_distance = calculate_route_distance(best, distance_matrix)
@@ -107,7 +116,10 @@ def two_opt(route: List[int], distance_matrix: np.ndarray, fixed_start: bool = F
     return best
 
 
-def _match_existing_point(points: List[Point], candidate: Point) -> Optional[Point]:
+def _match_existing_point(
+    points: List[Point], 
+    candidate: Point
+    ) -> Optional[Point]:
     if candidate.id is not None:
         for p in points:
             if p.id == candidate.id:
@@ -127,7 +139,9 @@ def _match_existing_point(points: List[Point], candidate: Point) -> Optional[Poi
     return None
 
 
-def prepare_route_points(request: RouteRequest) -> Tuple[List[Point], bool, Optional[int], Optional[int]]:
+def prepare_route_points(
+    request: RouteRequest
+    ) -> Tuple[List[Point], bool, Optional[int], Optional[int]]:
     points = resolve_points_with_coordinates(request.points)
     has_street = any(p.street for p in points)
 
@@ -167,7 +181,13 @@ def prepare_route_points(request: RouteRequest) -> Tuple[List[Point], bool, Opti
     return ordered, has_street, start_index, end_index
 
 
-def or_opt(route: List[int], distance_matrix: np.ndarray, segment_size: int = 3, fixed_start: bool = False, fixed_end: bool = False) -> List[int]:
+def or_opt(
+    route: List[int], 
+    distance_matrix: np.ndarray, 
+    segment_size: int = 3, 
+    fixed_start: bool = False, 
+    fixed_end: bool = False
+    ) -> List[int]:
     """Or-opt: перемещение сегмента из 1-3 точек в другую позицию маршрута.
     Дает более качественные маршруты чем 2-opt."""
     best = route.copy()
