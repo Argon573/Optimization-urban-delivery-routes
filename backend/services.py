@@ -1,32 +1,42 @@
 from typing import List, Optional, Tuple
 import numpy as np
+import random
+import math
 from models import Point, DistanceMethod, RouteRequest
-from utils import haversine_distance, sort_points_by_street_coordinates, resolve_points_with_coordinates
+from utils import (
+    haversine_distance,
+    haversine_distance_vectorized,
+    sort_points_by_street_coordinates,
+    resolve_points_with_coordinates,
+    get_osrm_distance_wrapper,
+)
 
 
 def calculate_distance_matrix(points: List[Point], method: DistanceMethod = DistanceMethod.OSRM) -> Tuple[np.ndarray, str]:
+    """Расчет матрицы расстояний с поддержкой OSRM и векторизованного Haversine."""
     n = len(points)
     matrix = np.zeros((n, n))
     source_used = method
 
-    for i in range(n):
-        for j in range(i + 1, n):
-            if method == DistanceMethod.OSRM:
-                try:
-                    from utils import get_osrm_distance
-                except ImportError:
-                    get_osrm_distance = lambda p1, p2: None
+    if method == DistanceMethod.OSRM:
+        # Сначала пробуем OSRM, на ошибку или таймаут переходим на Haversine
+        osrm_failed = False
+        for i in range(n):
+            for j in range(i + 1, n):
+                if not osrm_failed:
+                    dist = get_osrm_distance_wrapper(points[i], points[j])
+                    if dist is not None:
+                        matrix[i][j] = matrix[j][i] = dist
+                    else:
+                        osrm_failed = True
+                        source_used = DistanceMethod.EUCLIDEAN
 
-                dist = get_osrm_distance(points[i], points[j])
-                if dist is not None:
-                    matrix[i][j] = matrix[j][i] = dist
-                else:
-                    source_used = DistanceMethod.EUCLIDEAN
-                    dist = haversine_distance(points[i], points[j])
-                    matrix[i][j] = matrix[j][i] = dist
-            else:
-                dist = haversine_distance(points[i], points[j])
-                matrix[i][j] = matrix[j][i] = dist
+        # Если OSRM не сработал, используем векторизованный Haversine
+        if osrm_failed:
+            matrix = haversine_distance_vectorized(points)
+    else:
+        # Векторизованный расчет Haversine для всей матрицы за раз
+        matrix = haversine_distance_vectorized(points)
 
     return matrix, source_used.value
 
@@ -69,24 +79,30 @@ def nearest_neighbor_route(
     return route
 
 
-def two_opt(route: List[int], distance_matrix: np.ndarray, fixed_start: bool = False, fixed_end: bool = False) -> List[int]:
+def two_opt(route: List[int], distance_matrix: np.ndarray, fixed_start: bool = False, fixed_end: bool = False, max_iterations: int = 100) -> List[int]:
+    """Оптимизация маршрута методом 2-opt с расчетом только измененных ребер."""
     best = route.copy()
+    best_distance = calculate_route_distance(best, distance_matrix)
     improved = True
+    iterations = 0
 
-    while improved:
+    while improved and iterations < max_iterations:
         improved = False
+        iterations += 1
 
         for i in range(1 if fixed_start else 0, len(best) - 2):
             for j in range(i + 1, len(best) if not fixed_end else len(best) - 1):
                 if j - i == 1:
                     continue
 
-                new_route = best[:i] + best[i:j][::-1] + best[j:]
-                if calculate_route_distance(new_route, distance_matrix) < calculate_route_distance(best, distance_matrix):
-                    best = new_route
+                # Расчет только измененных ребер вместо полного маршрута
+                old_cost = distance_matrix[best[i-1]][best[i]] + distance_matrix[best[j]][best[j+1]] if j+1 < len(best) else distance_matrix[best[j]][best[0]]
+                new_cost = distance_matrix[best[i-1]][best[j]] + distance_matrix[best[i]][best[j+1]] if j+1 < len(best) else distance_matrix[best[i]][best[0]]
+                
+                if new_cost < old_cost:
+                    best = best[:i] + best[i:j+1][::-1] + best[j+1:]
+                    best_distance -= old_cost - new_cost
                     improved = True
-
-        break
 
     return best
 
@@ -149,3 +165,122 @@ def prepare_route_points(request: RouteRequest) -> Tuple[List[Point], bool, Opti
         end_index = len(ordered) - 1
 
     return ordered, has_street, start_index, end_index
+
+
+def or_opt(route: List[int], distance_matrix: np.ndarray, segment_size: int = 3, fixed_start: bool = False, fixed_end: bool = False) -> List[int]:
+    """Or-opt: перемещение сегмента из 1-3 точек в другую позицию маршрута.
+    Дает более качественные маршруты чем 2-opt."""
+    best = route.copy()
+    improved = True
+    
+    while improved:
+        improved = False
+        n = len(best)
+        
+        for seg_len in range(1, min(segment_size + 1, n // 2)):
+            for i in range(1 if fixed_start else 0, n - seg_len):
+                segment = best[i:i + seg_len]
+                remaining = best[:i] + best[i + seg_len:]
+                
+                # Пробуем вставить сегмент в каждую позицию
+                for j in range(1 if fixed_start else 0, len(remaining) - (1 if fixed_end else 0) + 1):
+                    new_route = remaining[:j] + segment + remaining[j:]
+                    
+                    if calculate_route_distance(new_route, distance_matrix) < calculate_route_distance(best, distance_matrix):
+                        best = new_route
+                        improved = True
+                        break
+                
+                if improved:
+                    break
+            
+            if improved:
+                break
+    
+    return best
+
+
+def simulated_annealing(
+    route: List[int],
+    distance_matrix: np.ndarray,
+    initial_temp: float = 1000.0,
+    cooling_rate: float = 0.95,
+    max_iterations: int = 5000,
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+) -> List[int]:
+    """Имитация отжига для выхода из локальных оптимумов.
+    Может находить лучшие решения чем 2-opt в сложных случаях."""
+    current = route.copy()
+    current_distance = calculate_route_distance(current, distance_matrix)
+    best = current.copy()
+    best_distance = current_distance
+    
+    temp = initial_temp
+    n = len(route)
+    
+    for iteration in range(max_iterations):
+        # Генерируем соседнее решение (2-opt ход)
+        new_route = current.copy()
+        
+        # Выбираем две случайные позиции
+        while True:
+            i = random.randint(1 if fixed_start else 0, n - 2)
+            j = random.randint(i + 1, n - 1 if not fixed_end else n - 2)
+            if j - i > 1:
+                break
+        
+        # Разворачиваем сегмент
+        new_route[i:j+1] = new_route[i:j+1][::-1]
+        new_distance = calculate_route_distance(new_route, distance_matrix)
+        
+        # Вероятность принятия хорошего или среднего решения
+        delta = new_distance - current_distance
+        if delta < 0 or random.random() < math.exp(-delta / temp):
+            current = new_route
+            current_distance = new_distance
+            
+            # Обновляем лучшее найденное решение
+            if current_distance < best_distance:
+                best = current.copy()
+                best_distance = current_distance
+        
+        # Охлаждаем
+        temp *= cooling_rate
+        
+        # Рано выходим если температура очень низкая
+        if temp < 1e-4:
+            break
+    
+    return best
+
+
+def optimize_route_advanced(
+    route: List[int],
+    distance_matrix: np.ndarray,
+    use_or_opt: bool = True,
+    use_simulated_annealing: bool = False,
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+) -> List[int]:
+    """Комбинированная оптимизация: 2-opt + Or-opt + опционально имитация отжига."""
+    # Начинаем с 2-opt
+    route = two_opt(route, distance_matrix, fixed_start, fixed_end)
+    
+    # Затем Or-opt для улучшения качества
+    if use_or_opt:
+        route = or_opt(route, distance_matrix, segment_size=3, fixed_start=fixed_start, fixed_end=fixed_end)
+    
+    # И наконец имитация отжига если нужна (для сложных случаев)
+    if use_simulated_annealing:
+        route = simulated_annealing(
+            route,
+            distance_matrix,
+            initial_temp=100.0,
+            cooling_rate=0.98,
+            max_iterations=2000,
+            fixed_start=fixed_start,
+            fixed_end=fixed_end,
+        )
+    
+    return route

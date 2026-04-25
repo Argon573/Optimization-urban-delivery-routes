@@ -1,6 +1,3 @@
-# Эндпоинт для автокомплита адресов через Photon
-
-
 from fastapi import Query as FastAPIQuery
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -10,9 +7,12 @@ from services import (
     calculate_route_distance,
     nearest_neighbor_route,
     two_opt,
+    or_opt,
+    simulated_annealing,
+    optimize_route_advanced,
     prepare_route_points,
 )
-from utils import get_osrm_distance, resolve_points_with_coordinates
+from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates
 from models import Point
 import requests
 import math
@@ -76,7 +76,7 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "osrm_available": get_osrm_distance(
+        "osrm_available": get_osrm_distance_wrapper(
             Point(lat=55.7558, lon=37.6176),
             Point(lat=55.7658, lon=37.6276),
         )
@@ -141,17 +141,17 @@ async def generate_points(request: GenerateRequest):
 @router.post("/route/image")
 async def route_image(
     request: RouteRequest,
-    mode: str = Query("optimized", description="Порядок точек: original | nn | optimized")
+    mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
+    use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
+    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
 ):
     """
-    Возвращает GeoJSON маршрута.
+    Возвращает GeoJSON маршрута с поддержкой различных алгоритмов оптимизации.
     """
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
-
     # Получаем нужный порядок точек
-    from services import prepare_route_points, calculate_distance_matrix, nearest_neighbor_route, two_opt
     ordered_points, _, start_index, end_index = prepare_route_points(request)
     distance_matrix, _ = calculate_distance_matrix(ordered_points)
 
@@ -161,7 +161,19 @@ async def route_image(
         route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
     else:  # optimized
         nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
-        route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+        
+        # Используем комбинированную оптимизацию или обычную 2-opt
+        if use_advanced:
+            route_indices = optimize_route_advanced(
+                nn_route_indices,
+                distance_matrix,
+                use_or_opt=True,
+                use_simulated_annealing=use_annealing,
+                fixed_start=(start_index is not None),
+                fixed_end=(end_index is not None),
+            )
+        else:
+            route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
 
     # Получаем координаты точек в нужном порядке
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
@@ -215,7 +227,12 @@ async def get_distance_matrix(request: RouteRequest):
 
 
 @router.post("/route/optimize", response_model=OptimizedRouteResponse)
-async def optimize_route(request: RouteRequest):
+async def optimize_route(
+    request: RouteRequest,
+    use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
+    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
+):
+    """Оптимизация маршрута с поддержкой различных алгоритмов."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
@@ -227,7 +244,23 @@ async def optimize_route(request: RouteRequest):
     original_distance = calculate_route_distance(original_route_indices, distance_matrix)
 
     nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
-    optimized_route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+    
+    # Используем комбинированную оптимизацию или обычную 2-opt
+    if use_advanced:
+        optimized_route_indices = optimize_route_advanced(
+            nn_route_indices,
+            distance_matrix,
+            use_or_opt=True,
+            use_simulated_annealing=use_annealing,
+            fixed_start=(start_index is not None),
+            fixed_end=(end_index is not None),
+        )
+        algorithm = "NN + 2-opt + Or-opt"
+        if use_annealing:
+            algorithm += " + Simulated Annealing"
+    else:
+        optimized_route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+        algorithm = "Nearest Neighbor + 2-opt"
 
     optimized_distance = calculate_route_distance(optimized_route_indices, distance_matrix)
     improvement = ((original_distance - optimized_distance) / original_distance) * 100 if original_distance > 0 else 0.0
@@ -241,6 +274,6 @@ async def optimize_route(request: RouteRequest):
         original_distance_km=original_distance / 1000,
         optimized_distance_km=optimized_distance / 1000,
         improvement_percent=round(improvement, 2),
-        algorithm_used="Nearest Neighbor + 2-opt",
+        algorithm_used=algorithm,
         matrix_source=source,
     )
