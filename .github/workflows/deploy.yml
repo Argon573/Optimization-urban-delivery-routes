@@ -1,55 +1,34 @@
-# .github/workflows/deploy.yml
 name: Deploy to Server
 
 on:
   push:
-    branches: [ main, devops ] # Сработает при пуше в main или devops
-  workflow_dispatch:          # Позволяет запустить вручную из интерфейса GitHub
+    branches: [ main, DevOps ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to VPS
-    # Используем последний стабильный образ Ubuntu
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Клонируем код из репозитория
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Здесь можно добавить шаги для сборки фронтенда, если нужно
-      # Но в твоем случае фронтенд собирается на сервере, поэтому пропустим
-
-      # 3. Подключаемся к серверу по SSH и запускаем деплой
       - name: Execute deployment commands on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script_stop: true # Остановить скрипт при любой ошибке
+          script_stop: true
           script: |
-            # Перейти в папку проекта
             cd /home/developer/delivery-optimizer
-            
-            # Скачать последние изменения из Git
-            git pull origin devops
-            # Если твоя основная ветка называется main, замени devops на main.
-            # Если нужно переключаться между ветками, используй: git fetch && git checkout devops && git pull
-            
-            # Пересобрать и перезапустить Docker-контейнеры бэкенда и базы данных
+            git pull origin DevOps
             docker compose down
             docker compose build --no-cache
             docker compose up -d
-            
-            # Установить зависимости и собрать фронтенд
             cd /home/developer/delivery-optimizer/frontend
             npm install
             npm run build
-            
-            # Перезапустить Nginx, чтобы он подхватил новый фронтенд
             sudo systemctl restart nginx
-            
-            # Вывести статус контейнеров для проверки в логах
-            echo "Deployment finished. Containers status:"
             docker ps -a
