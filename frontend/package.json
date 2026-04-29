@@ -10,7 +10,7 @@
     "@yandex/ymaps3-default-ui-theme": "^0.0.24",
     "leaflet": "^1.9.4",
     "osm-api": "^4.0.0",
-    "osmtogeojson": "^3.0.0-beta.5",
+    "osmtogeojson": "^2.2.12",
     "react": "^19.2.4",
     "react-dom": "^19.2.5",
     "react-icons": "^5.5.0",
