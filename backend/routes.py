@@ -17,7 +17,7 @@ from models import Point
 import requests
 import math
 import random
-from map_render import render_route_map
+# from map_render import render_route_map  # временно отключено
 
 router = APIRouter()
 
@@ -190,8 +190,24 @@ async def route_image(
         raise HTTPException(status_code=502, detail="OSRM не вернул маршрут")
     geometry = osrm_data["routes"][0]["geometry"]["coordinates"]
 
-    # Генерируем GeoJSON через map_render
-    from map_render import route_to_geojson
+    def route_to_geojson(route_coords, geometry):
+        return {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": geometry},
+                    "properties": {"name": "route"}
+                },
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                        "properties": {"order": idx}
+                    } for idx, (lon, lat) in enumerate(route_coords)
+                ]
+            ]
+        }
     import json
     geojson = route_to_geojson(route_coords, geometry)
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
@@ -277,3 +293,37 @@ async def optimize_route(
         algorithm_used=algorithm,
         matrix_source=source,
     )
+
+
+
+
+# Тестовый эндпоинт для проверки работы Яндекс API с вашим ключом
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from fastapi import Query as FastAPIQuery
+
+@router.get("/road-events")
+async def get_road_events(
+    lat: float = FastAPIQuery(56.8380, description="Широта центра (Екатеринбург)"),
+    lon: float = FastAPIQuery(60.5975, description="Долгота центра"),
+    radius_m: int = FastAPIQuery(15000, description="Радиус в метрах")
+):
+    conn = psycopg2.connect(
+        host="db",
+        database="traffic_db",
+        user="admin",
+        password="mysecret",
+        cursor_factory=RealDictCursor
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, event_type, title, latitude, longitude, severity, detected_at
+        FROM road_events
+        WHERE expires_at > NOW()
+          AND (6371000 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude)))) <= %s
+        ORDER BY detected_at DESC
+    """, (lat, lon, lat, radius_m))
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"events": events, "count": len(events)}

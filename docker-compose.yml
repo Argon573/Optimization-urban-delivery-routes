@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # 1. Сервис базы данных PostgreSQL
+  db:
+    image: postgres:16-alpine          # Легкий образ PostgreSQL 16 (Alpine Linux)
+    container_name: traffic_postgres   # Имя контейнера
+    environment:
+      POSTGRES_USER: admin             # Логин
+      POSTGRES_PASSWORD: mysecret      # Пароль (потом вынесешь в .env)
+      POSTGRES_DB: traffic_db          # Название базы данных
+    ports:
+      - "5432:5432"                    # Пробрасываем порт наружу
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data   # Папка для данных (persistent)
+      - ./init:/docker-entrypoint-initdb.d:ro      # Папка со скриптами инициализации
+    restart: unless-stopped            # Автоперезапуск
+
+  # 2. Сервис твоего бэкенда
+  backend:
+    build: ./backend                   # Собираем из Dockerfile в папке backend
+    container_name: route_backend
+    ports:
+      - "8000:8000"                   # Твой FastAPI
+    env_file:
+      - .env                            # Загружаем переменные окружения из .env
+    environment:
+      DATABASE_URL: postgresql://admin:mysecret@db:5432/traffic_db
+    depends_on:
+      - db                             # Ждем, пока БД запустится
+    volumes:
+      - ./backend:/app                 # Монтируем код (чтобы изменения подхватывались)
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload

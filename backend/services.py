@@ -3,6 +3,7 @@ import numpy as np
 import random
 import math
 from models import Point, DistanceMethod, RouteRequest
+
 from utils import (
     haversine_distance,
     haversine_distance_vectorized,
@@ -11,9 +12,12 @@ from utils import (
     get_osrm_distance_wrapper,
 )
 
+# Импортируем функции для работы с пробками
+from traffic_db_utils import fetch_jams_from_db, adjust_matrix_with_jams
+
 
 def calculate_distance_matrix(points: List[Point], method: DistanceMethod = DistanceMethod.OSRM) -> Tuple[np.ndarray, str]:
-    """Расчет матрицы расстояний с поддержкой OSRM и векторизованного Haversine."""
+    """Расчет матрицы расстояний с поддержкой OSRM и корректировкой по пробкам из БД."""
     n = len(points)
     matrix = np.zeros((n, n))
     source_used = method
@@ -37,6 +41,11 @@ def calculate_distance_matrix(points: List[Point], method: DistanceMethod = Dist
     else:
         # Векторизованный расчет Haversine для всей матрицы за раз
         matrix = haversine_distance_vectorized(points)
+
+    # --- Корректировка матрицы с учетом пробок из БД ---
+    jams = fetch_jams_from_db(points)
+    if jams:
+        matrix = adjust_matrix_with_jams(matrix, jams)
 
     return matrix, source_used.value
 

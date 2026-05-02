@@ -22,3 +22,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Docker
+postgres-data/
+*.pid
+
+# Backend specific
+backend/__pycache__/
