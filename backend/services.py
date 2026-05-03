@@ -16,13 +16,18 @@ from utils import (
 from traffic_db_utils import fetch_jams_from_db, adjust_matrix_with_jams
 
 
-def calculate_distance_matrix(points: List[Point], method: DistanceMethod = DistanceMethod.OSRM) -> Tuple[np.ndarray, str]:
+def calculate_distance_matrix(points: List[Point], method: str = "osrm") -> Tuple[np.ndarray, str]:
     """Расчет матрицы расстояний с поддержкой OSRM и корректировкой по пробкам из БД."""
     n = len(points)
     matrix = np.zeros((n, n))
-    source_used = method
+    # Приведение к Enum, если строка
+    if isinstance(method, str):
+        method_enum = DistanceMethod(method.lower()) if method.lower() in DistanceMethod.__members__.values() or method.lower() in ["osrm", "euclidean"] else DistanceMethod.OSRM
+    else:
+        method_enum = method
+    source_used = method_enum
 
-    if method == DistanceMethod.OSRM:
+    if method_enum == DistanceMethod.OSRM:
         # Сначала пробуем OSRM, на ошибку или таймаут переходим на Haversine
         osrm_failed = False
         for i in range(n):

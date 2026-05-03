@@ -136,14 +136,15 @@ async def generate_points(request: GenerateRequest):
     )
 
 
-# Эндпоинт: картинка маршрута
+# Эндпоинт: geojson маршрут с поддержкой оптимизации и различного транспорта
 
-@router.post("/route/image")
-async def route_image(
+@router.post("/route/geojson")
+async def route_geojson(
     request: RouteRequest,
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
-    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
+    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев (только более 10 точек иначе может упасть бек пока)"),
+    transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling"),
 ):
     """
     Возвращает GeoJSON маршрута с поддержкой различных алгоритмов оптимизации.
@@ -180,7 +181,7 @@ async def route_image(
 
     # Получаем линию маршрута через OSRM (polyline)
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
-    osrm_url = f"http://router.project-osrm.org/route/v1/driving/{osrm_coords}"
+    osrm_url = f"http://router.project-osrm.org/route/v1/{transport}/{osrm_coords}"
     osrm_params = {"overview": "full", "geometries": "geojson"}
     osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=5)
     if osrm_resp.status_code != 200:
@@ -214,12 +215,12 @@ async def route_image(
 
 
 @router.post("/route/baseline", response_model=RouteResponse)
-async def calculate_baseline_route(request: RouteRequest):
+async def calculate_baseline_route(request: RouteRequest, transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling")):
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
     sorted_points, has_street, _, _ = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(sorted_points)
+    distance_matrix, source = calculate_distance_matrix(sorted_points, method=transport)
 
     base_order = [p.id for p in sorted_points]
     route_indices = list(range(len(sorted_points)))
@@ -236,9 +237,9 @@ async def calculate_baseline_route(request: RouteRequest):
 
 
 @router.post("/route/matrix")
-async def get_distance_matrix(request: RouteRequest):
+async def get_distance_matrix(request: RouteRequest, transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling")):
     sorted_points, _, _, _ = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(sorted_points)
+    distance_matrix, source = calculate_distance_matrix(sorted_points, method=transport)
     return {"matrix": distance_matrix.tolist(), "source": source, "points_count": len(sorted_points)}
 
 
@@ -247,13 +248,14 @@ async def optimize_route(
     request: RouteRequest,
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
+    transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling"),
 ):
     """Оптимизация маршрута с поддержкой различных алгоритмов."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
     ordered_points, has_street, start_index, end_index = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(ordered_points)
+    distance_matrix, source = calculate_distance_matrix(ordered_points, method=transport)
 
     original_order_ids = [p.id for p in ordered_points]
     original_route_indices = list(range(len(ordered_points)))
