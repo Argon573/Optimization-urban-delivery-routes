@@ -121,7 +121,7 @@ docker-compose up -d
 | POST | `/generate` | Генерация случайных точек в радиусе от центра |
 | POST | `/route/baseline` | Базовый маршрут (без оптимизации) |
 | POST | `/route/optimize` | **Оптимизированный маршрут** (NN + 2-opt + Or‑opt + SA) |
-| POST | `/route/image` | GeoJSON маршрута для визуализации на карте |
+| POST | `/route/geojson` | GeoJSON маршрута для визуализации на карте |
 | POST | `/route/matrix` | Матрица расстояний между точками (для отладки) |
 | GET | `/address/photon_suggest` | Автокомплит адресов через Photon (OSM) |
 | GET | `/road-events` | Список активных дорожных событий (пробки, ДТП, перекрытия) |

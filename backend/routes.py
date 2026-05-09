@@ -143,16 +143,12 @@ async def route_geojson(
     request: RouteRequest,
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
-    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев (только более 10 точек иначе может упасть бек пока)"),
+    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
     transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling"),
 ):
-    """
-    Возвращает GeoJSON маршрута с поддержкой различных алгоритмов оптимизации.
-    """
     if len(request.points) < 2:
-        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
+        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки")
 
-    # Получаем нужный порядок точек
     ordered_points, _, start_index, end_index = prepare_route_points(request)
     distance_matrix, _ = calculate_distance_matrix(ordered_points)
 
@@ -160,14 +156,11 @@ async def route_geojson(
         route_indices = list(range(len(ordered_points)))
     elif mode == "nn":
         route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
-    else:  # optimized
+    else:
         nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
-        
-        # Используем комбинированную оптимизацию или обычную 2-opt
         if use_advanced:
             route_indices = optimize_route_advanced(
-                nn_route_indices,
-                distance_matrix,
+                nn_route_indices, distance_matrix,
                 use_or_opt=True,
                 use_simulated_annealing=use_annealing,
                 fixed_start=(start_index is not None),
@@ -176,14 +169,20 @@ async def route_geojson(
         else:
             route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
 
-    # Получаем координаты точек в нужном порядке
+    # Координаты точек в нужном порядке
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
-
-    # Получаем линию маршрута через OSRM (polyline)
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
-    osrm_url = f"http://router.project-osrm.org/route/v1/{transport}/{osrm_coords}"
+
+    if transport == "walking":
+        osrm_url = f"http://osrm-foot:5002/route/v1/walking/{osrm_coords}"
+    elif transport == "cycling":
+        osrm_url = f"http://osrm-bike:5001/route/v1/cycling/{osrm_coords}"
+    else:
+        osrm_url = f"http://osrm-car:5000/route/v1/driving/{osrm_coords}"
+
     osrm_params = {"overview": "full", "geometries": "geojson"}
     osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=5)
+
     if osrm_resp.status_code != 200:
         raise HTTPException(status_code=502, detail="Ошибка запроса к OSRM")
     osrm_data = osrm_resp.json()
@@ -212,7 +211,6 @@ async def route_geojson(
     import json
     geojson = route_to_geojson(route_coords, geometry)
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
-
 
 @router.post("/route/baseline", response_model=RouteResponse)
 async def calculate_baseline_route(request: RouteRequest, transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling")):

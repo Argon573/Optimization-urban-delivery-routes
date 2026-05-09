@@ -69,24 +69,34 @@ def geocode_address(city: Optional[str], street: Optional[str], house: Optional[
 
 import os
 
-OSRM_URL = os.getenv("OSRM_URL", "http://localhost:5000")
+OSRM_CAR_URL = os.getenv("OSRM_CAR_URL", "http://localhost:5000")
+OSRM_BIKE_URL = os.getenv("OSRM_BIKE_URL", "http://localhost:5001")
+OSRM_FOOT_URL = os.getenv("OSRM_FOOT_URL", "http://localhost:5002")
 
 @lru_cache(maxsize=512)
 def get_osrm_distance(point1_key: str, point2_key: str, transport: str = "driving") -> Optional[float]:
+    # Выбираем URL в зависимости от типа транспорта
+    if transport == "walking":
+        base_url = OSRM_FOOT_URL
+        profile = "walking"
+    elif transport == "cycling":
+        base_url = OSRM_BIKE_URL
+        profile = "cycling"
+    else:  # driving
+        base_url = OSRM_CAR_URL
+        profile = "driving"
+
     try:
-        url = f"{OSRM_URL}/route/v1/{transport}/{point2_key};{point1_key}"
+        url = f"{base_url}/route/v1/{profile}/{point2_key};{point1_key}"
         params = {"overview": "false", "annotations": "distance"}
-        response = requests.get(url, params=params, timeout=2)
+        response = requests.get(url, params=params, timeout=5)
         data = response.json()
 
         if response.status_code == 200 and data.get("code") == "Ok":
             return data["routes"][0]["distance"]
         return None
-    except requests.RequestException:
+    except:
         return None
-    except (KeyError, IndexError):
-        return None
-
 
 def get_osrm_distance_wrapper(point1: Point, point2: Point, transport: str = "driving") -> Optional[float]:
     """Обертка для работы с объектами Point."""

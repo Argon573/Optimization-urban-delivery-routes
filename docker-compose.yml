@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. Сервис базы данных PostgreSQL
+  # 1. PostgreSQL
   db:
     image: postgres:16-alpine
     container_name: traffic_postgres
@@ -16,7 +16,7 @@ services:
       - ./init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
 
-  # 2. Сервис твоего бэкенда
+  # 2. Бэкенд FastAPI
   backend:
     build: ./backend
     container_name: route_backend
@@ -26,27 +26,92 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://admin:mysecret@db:5432/traffic_db
-      OSRM_URL: http://osrm:5000
+      OSRM_CAR_URL: http://osrm-car:5000
+      OSRM_BIKE_URL: http://osrm-bike:5001
+      OSRM_FOOT_URL: http://osrm-foot:5002
     depends_on:
       - db
-      - osrm
+      - osrm-car
+      - osrm-bike
+      - osrm-foot
     volumes:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-  # 3. Сервис локального OSRM (Екатеринбург)
-  osrm:
+  # 3. OSRM Car (driving) - порт 5000
+  osrm-car:
     image: osrm/osrm-backend:latest
-    container_name: osrm-ekb
+    container_name: osrm-car
     ports:
       - "5000:5000"
     volumes:
-      - ./osrm-data:/data
-    command: osrm-routed --algorithm mld --ip 0.0.0.0 --port 5000 /data/uralsky.osrm
+      - ./osrm-data/car:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/car.osrm ]; then
+        osrm-extract -p /opt/car.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/car.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5000 /data/car.osrm
+      "
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/route/v1/driving/60.5975,56.8380;60.6075,56.8480?overview=false"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 300s
+
+  # 4. OSRM Bike (cycling) - порт 5001
+  osrm-bike:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-bike
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./osrm-data/bike:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/bike.osrm ]; then
+        osrm-extract -p /opt/bicycle.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/bike.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5001 /data/bike.osrm
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/route/v1/cycling/60.5975,56.8380;60.6075,56.8480?overview=false"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+  # 5. OSRM Foot (walking) - порт 5002
+  osrm-foot:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-foot
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./osrm-data/foot:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/foot.osrm ]; then
+        osrm-extract -p /opt/foot.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/foot.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5002 /data/foot.osrm
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/route/v1/walking/60.5975,56.8380;60.6075,56.8480?overview=false"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
