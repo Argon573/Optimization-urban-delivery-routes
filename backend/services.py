@@ -10,10 +10,10 @@ from utils import (
     sort_points_by_street_coordinates,
     resolve_points_with_coordinates,
     get_osrm_distance_wrapper,
+    get_osrm_route_info,
 )
 
-# Импортируем функции для работы с пробками
-from traffic_db_utils import fetch_jams_from_db, adjust_matrix_with_jams
+
 
 
 def calculate_distance_matrix(points: List[Point], method: str = "osrm") -> Tuple[np.ndarray, str]:
@@ -47,13 +47,42 @@ def calculate_distance_matrix(points: List[Point], method: str = "osrm") -> Tupl
         # Векторизованный расчет Haversine для всей матрицы за раз
         matrix = haversine_distance_vectorized(points)
 
-    # --- Корректировка матрицы с учетом пробок из БД ---
-    jams = fetch_jams_from_db(points)
-    if jams:
-        matrix = adjust_matrix_with_jams(matrix, jams)
-
     return matrix, source_used.value
 
+def calculate_weight_matrix(
+    points: List[Point], 
+    weight_type: str = "duration",
+    transport: str = "driving"
+) -> Tuple[np.ndarray, str]:
+    """
+    Расчёт матрицы весов (время или расстояние) с учётом пробок через OSRM.
+    weight_type: "duration" (секунды) или "distance" (метры)
+    """
+    n = len(points)
+    matrix = np.zeros((n, n))
+    failed_count = 0
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            info = get_osrm_route_info(
+                f"{points[i].lon},{points[i].lat}",
+                f"{points[j].lon},{points[j].lat}",
+                transport=transport
+            )
+            if info:
+                if weight_type == "duration":
+                    weight = info["duration"]
+                else:
+                    weight = info["distance"]
+                matrix[i][j] = matrix[j][i] = weight
+            else:
+                # Fallback на евклидово расстояние (метры)
+                weight = haversine_distance(points[i], points[j])
+                matrix[i][j] = matrix[j][i] = weight
+                failed_count += 1
+    
+    source = "osrm" if failed_count == 0 else "osrm_partial_fallback"
+    return matrix, source
 
 def calculate_route_distance(
     route_order: List[int], 

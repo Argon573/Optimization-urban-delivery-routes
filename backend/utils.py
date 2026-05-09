@@ -5,6 +5,8 @@ import numpy as np
 from functools import lru_cache
 from models import Point
 from fastapi import HTTPException
+from functools import lru_cache
+from typing import Optional, Dict
 
 
 def haversine_distance(point1: Point, point2: Point) -> float:
@@ -98,13 +100,6 @@ def get_osrm_distance(point1_key: str, point2_key: str, transport: str = "drivin
     except:
         return None
 
-def get_osrm_distance_wrapper(point1: Point, point2: Point, transport: str = "driving") -> Optional[float]:
-    """Обертка для работы с объектами Point."""
-    p1_key = f"{point1.lon},{point1.lat}"
-    p2_key = f"{point2.lon},{point2.lat}"
-    return get_osrm_distance(p1_key, p2_key, transport=transport)
-
-
 def sort_points_by_street_coordinates(points: List[Point]) -> List[Point]:
     return sorted(
         points,
@@ -139,3 +134,55 @@ def resolve_points_with_coordinates(points: List[Point]) -> List[Point]:
         )
 
     return resolved
+
+@lru_cache(maxsize=512)
+def get_osrm_route_info(point1_key: str, point2_key: str, transport: str = "driving") -> Optional[Dict[str, float]]:
+    """
+    Возвращает информацию о маршруте между двумя точками.
+    point1_key, point2_key: формат "lon,lat"
+    transport: "driving", "cycling", "walking"
+    
+    Возвращает:
+        {"distance": float (метры), "duration": float (секунды)}
+    """
+    if transport == "walking":
+        base_url = OSRM_FOOT_URL
+        profile = "walking"
+    elif transport == "cycling":
+        base_url = OSRM_BIKE_URL
+        profile = "cycling"
+    else:
+        base_url = OSRM_CAR_URL
+        profile = "driving"
+
+    try:
+        url = f"{base_url}/route/v1/{profile}/{point2_key};{point1_key}"
+        params = {"overview": "false", "annotations": "duration"}
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
+
+        if response.status_code == 200 and data.get("code") == "Ok":
+            return {
+                "distance": data["routes"][0]["distance"],  # метры
+                "duration": data["routes"][0]["duration"]   # секунды
+            }
+        return None
+    except Exception as e:
+        print(f"OSRM error: {e}")
+        return None
+
+
+def get_osrm_distance_wrapper(point1: Point, point2: Point, transport: str = "driving") -> Optional[float]:
+    """Обёртка для получения расстояния (совместимость со старым кодом)"""
+    p1_key = f"{point1.lon},{point1.lat}"
+    p2_key = f"{point2.lon},{point2.lat}"
+    info = get_osrm_route_info(p1_key, p2_key, transport)
+    return info["distance"] if info else None
+
+
+def get_osrm_duration_wrapper(point1: Point, point2: Point, transport: str = "driving") -> Optional[float]:
+    """Обёртка для получения времени с учётом пробок"""
+    p1_key = f"{point1.lon},{point1.lat}"
+    p2_key = f"{point2.lon},{point2.lat}"
+    info = get_osrm_route_info(p1_key, p2_key, transport)
+    return info["duration"] if info else None
