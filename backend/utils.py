@@ -67,14 +67,14 @@ def geocode_address(city: Optional[str], street: Optional[str], house: Optional[
     return None
 
 
+import os
+
+OSRM_URL = os.getenv("OSRM_URL", "http://localhost:5000")
+
 @lru_cache(maxsize=512)
 def get_osrm_distance(point1_key: str, point2_key: str, transport: str = "driving") -> Optional[float]:
-    """Кэшированный расчет расстояния через OSRM API.
-    Args: точки передаются как "lat,lon" для кэширования.
-    transport: профиль транспорта (driving, walking, cycling)
-    """
     try:
-        url = f"http://router.project-osrm.org/route/v1/{transport}/{point2_key};{point1_key}"
+        url = f"{OSRM_URL}/route/v1/{transport}/{point2_key};{point1_key}"
         params = {"overview": "false", "annotations": "distance"}
         response = requests.get(url, params=params, timeout=2)
         data = response.json()

@@ -3,31 +3,50 @@ version: '3.8'
 services:
   # 1. Сервис базы данных PostgreSQL
   db:
-    image: postgres:16-alpine          # Легкий образ PostgreSQL 16 (Alpine Linux)
-    container_name: traffic_postgres   # Имя контейнера
+    image: postgres:16-alpine
+    container_name: traffic_postgres
     environment:
-      POSTGRES_USER: admin             # Логин
-      POSTGRES_PASSWORD: mysecret      # Пароль (потом вынесешь в .env)
-      POSTGRES_DB: traffic_db          # Название базы данных
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mysecret
+      POSTGRES_DB: traffic_db
     ports:
-      - "5432:5432"                    # Пробрасываем порт наружу
+      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data   # Папка для данных (persistent)
-      - ./init:/docker-entrypoint-initdb.d:ro      # Папка со скриптами инициализации
-    restart: unless-stopped            # Автоперезапуск
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
 
   # 2. Сервис твоего бэкенда
   backend:
-    build: ./backend                   # Собираем из Dockerfile в папке backend
+    build: ./backend
     container_name: route_backend
     ports:
-      - "8000:8000"                   # Твой FastAPI
+      - "8000:8000"
     env_file:
-      - .env                            # Загружаем переменные окружения из .env
+      - .env
     environment:
       DATABASE_URL: postgresql://admin:mysecret@db:5432/traffic_db
+      OSRM_URL: http://osrm:5000
     depends_on:
-      - db                             # Ждем, пока БД запустится
+      - db
+      - osrm
     volumes:
-      - ./backend:/app                 # Монтируем код (чтобы изменения подхватывались)
+      - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # 3. Сервис локального OSRM (Екатеринбург)
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-ekb
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: osrm-routed --algorithm mld --ip 0.0.0.0 --port 5000 /data/uralsky.osrm
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/route/v1/driving/60.5975,56.8380;60.6075,56.8480?overview=false"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
