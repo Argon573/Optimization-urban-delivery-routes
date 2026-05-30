@@ -3,8 +3,18 @@ import requests
 import math
 import numpy as np
 from functools import lru_cache
-from models import Point
+from models import Point, TransportProfile
 from fastapi import HTTPException
+
+
+def osrm_profile_for_transport(transport: TransportProfile) -> str:
+    """Преобразует вид транспорта в профиль OSRM."""
+    mapping = {
+        TransportProfile.CAR: "driving",
+        TransportProfile.WALKING: "walking",
+        TransportProfile.TRANSIT: "walking",
+    }
+    return mapping[transport]
 
 
 def haversine_distance(point1: Point, point2: Point) -> float:
@@ -68,12 +78,12 @@ def geocode_address(city: Optional[str], street: Optional[str], house: Optional[
 
 
 @lru_cache(maxsize=512)
-def get_osrm_distance(point1_key: str, point2_key: str) -> Optional[float]:
+def get_osrm_distance(point1_key: str, point2_key: str, profile: str = "driving") -> Optional[float]:
     """Кэшированный расчет расстояния через OSRM API.
-    Args: точки передаются как "lat,lon" для кэширования.
+    Args: точки передаются как "lon,lat" для кэширования.
     """
     try:
-        url = f"http://router.project-osrm.org/route/v1/driving/{point2_key};{point1_key}"
+        url = f"http://router.project-osrm.org/route/v1/{profile}/{point2_key};{point1_key}"
         params = {"overview": "false", "annotations": "distance"}
         response = requests.get(url, params=params, timeout=2)
         data = response.json()
@@ -87,11 +97,16 @@ def get_osrm_distance(point1_key: str, point2_key: str) -> Optional[float]:
         return None
 
 
-def get_osrm_distance_wrapper(point1: Point, point2: Point) -> Optional[float]:
+def get_osrm_distance_wrapper(
+    point1: Point,
+    point2: Point,
+    transport: TransportProfile = TransportProfile.CAR,
+) -> Optional[float]:
     """Обертка для работы с объектами Point."""
     p1_key = f"{point1.lon},{point1.lat}"
     p2_key = f"{point2.lon},{point2.lat}"
-    return get_osrm_distance(p1_key, p2_key)
+    profile = osrm_profile_for_transport(transport)
+    return get_osrm_distance(p1_key, p2_key, profile)
 
 
 def sort_points_by_street_coordinates(points: List[Point]) -> List[Point]:
