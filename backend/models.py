@@ -86,3 +86,10 @@ class AddressRequest(BaseModel):
 class DistanceMethod(str, Enum):
     OSRM = "osrm"
     EUCLIDEAN = "euclidean"
+
+
+class TransportProfile(str, Enum):
+    """Вид транспорта для построения маршрута (маппится на профиль OSRM)."""
+    CAR = "car"
+    WALKING = "walking"
+    TRANSIT = "transit"

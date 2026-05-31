@@ -1,7 +1,15 @@
 from fastapi import Query as FastAPIQuery
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-from models import GenerateRequest, GenerateResponse, RouteRequest, RouteResponse, OptimizedRouteResponse, AddressRequest
+from models import (
+    GenerateRequest,
+    GenerateResponse,
+    RouteRequest,
+    RouteResponse,
+    OptimizedRouteResponse,
+    AddressRequest,
+    TransportProfile,
+)
 from services import (
     calculate_distance_matrix,
     calculate_weight_matrix,
@@ -13,7 +21,7 @@ from services import (
     optimize_route_advanced,
     prepare_route_points,
 )
-from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates
+from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates, osrm_profile_for_transport
 from models import Point
 import requests
 import math
@@ -145,21 +153,17 @@ async def route_geojson(
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
-    transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling"),
-    optimize_by: str = Query("duration", description="Критерий оптимизации: distance | duration"),
+    profile: TransportProfile = Query(
+        TransportProfile.CAR,
+        description="Вид транспорта: car | walking | transit",
+    ),
 ):
     """Возвращает GeoJSON маршрута, построенного с учётом весов (время или расстояние)."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки")
 
     ordered_points, _, start_index, end_index = prepare_route_points(request)
-    
-    # Матрица весов
-    weight_matrix, _ = calculate_weight_matrix(
-        ordered_points, 
-        weight_type=optimize_by,
-        transport=transport
-    )
+    distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
 
     # Определяем порядок точек
     if mode == "original":
@@ -194,15 +198,8 @@ async def route_geojson(
     # Координаты точек в нужном порядке
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
-
-    # Запрос геометрии к OSRM (с учётом транспорта)
-    if transport == "walking":
-        osrm_url = f"http://osrm-foot:5002/route/v1/walking/{osrm_coords}"
-    elif transport == "cycling":
-        osrm_url = f"http://osrm-bike:5001/route/v1/cycling/{osrm_coords}"
-    else:
-        osrm_url = f"http://osrm-car:5000/route/v1/driving/{osrm_coords}"
-
+    osrm_profile = osrm_profile_for_transport(profile)
+    osrm_url = f"http://router.project-osrm.org/route/v1/{osrm_profile}/{osrm_coords}"
     osrm_params = {"overview": "full", "geometries": "geojson"}
     osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=10)
 
@@ -237,12 +234,15 @@ async def route_geojson(
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
 
 @router.post("/route/baseline", response_model=RouteResponse)
-async def calculate_baseline_route(request: RouteRequest, transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling")):
+async def calculate_baseline_route(
+    request: RouteRequest,
+    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
+):
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
     sorted_points, has_street, _, _ = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(sorted_points, method=transport)
+    distance_matrix, source = calculate_distance_matrix(sorted_points, transport=profile)
 
     base_order = [p.id for p in sorted_points]
     route_indices = list(range(len(sorted_points)))
@@ -259,9 +259,12 @@ async def calculate_baseline_route(request: RouteRequest, transport: str = Query
 
 
 @router.post("/route/matrix")
-async def get_distance_matrix(request: RouteRequest, transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling")):
+async def get_distance_matrix(
+    request: RouteRequest,
+    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
+):
     sorted_points, _, _, _ = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(sorted_points, method=transport)
+    distance_matrix, source = calculate_distance_matrix(sorted_points, transport=profile)
     return {"matrix": distance_matrix.tolist(), "source": source, "points_count": len(sorted_points)}
 
 
@@ -270,8 +273,7 @@ async def optimize_route(
     request: RouteRequest,
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
-    transport: str = Query("driving", description="Тип транспорта: driving | walking | cycling"),
-    optimize_by: str = Query("duration", description="Критерий оптимизации: distance | duration"),
+    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
 ):
     """Оптимизация маршрута с учётом весов (расстояние или время с пробками)."""
     if len(request.points) < 2:
@@ -279,13 +281,7 @@ async def optimize_route(
 
     # Подготовка точек
     ordered_points, has_street, start_index, end_index = prepare_route_points(request)
-    
-    # Матрица весов (время или расстояние)
-    weight_matrix, source = calculate_weight_matrix(
-        ordered_points, 
-        weight_type=optimize_by,
-        transport=transport
-    )
+    distance_matrix, source = calculate_distance_matrix(ordered_points, transport=profile)
 
     # Исходный порядок (для сравнения)
     original_order_ids = [p.id for p in ordered_points]

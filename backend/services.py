@@ -2,8 +2,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import random
 import math
-from models import Point, DistanceMethod, RouteRequest
-
+from models import Point, DistanceMethod, RouteRequest, TransportProfile
 from utils import (
     haversine_distance,
     haversine_distance_vectorized,
@@ -14,10 +13,12 @@ from utils import (
 )
 
 
-
-
-def calculate_distance_matrix(points: List[Point], method: str = "osrm") -> Tuple[np.ndarray, str]:
-    """Расчет матрицы расстояний с поддержкой OSRM и корректировкой по пробкам из БД."""
+def calculate_distance_matrix(
+    points: List[Point],
+    method: DistanceMethod = DistanceMethod.OSRM,
+    transport: TransportProfile = TransportProfile.CAR,
+) -> Tuple[np.ndarray, str]:
+    """Расчет матрицы расстояний с поддержкой OSRM и векторизованного Haversine."""
     n = len(points)
     matrix = np.zeros((n, n))
     # Приведение к Enum, если строка
@@ -33,7 +34,7 @@ def calculate_distance_matrix(points: List[Point], method: str = "osrm") -> Tupl
         for i in range(n):
             for j in range(i + 1, n):
                 if not osrm_failed:
-                    dist = get_osrm_distance_wrapper(points[i], points[j])
+                    dist = get_osrm_distance_wrapper(points[i], points[j], transport)
                     if dist is not None:
                         matrix[i][j] = matrix[j][i] = dist
                     else:
