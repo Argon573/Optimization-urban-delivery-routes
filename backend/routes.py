@@ -12,6 +12,7 @@ from models import (
 )
 from services import (
     calculate_distance_matrix,
+    calculate_weight_matrix,
     calculate_route_distance,
     nearest_neighbor_route,
     two_opt,
@@ -25,7 +26,7 @@ from models import Point
 import requests
 import math
 import random
-from map_render import render_route_map
+# from map_render import render_route_map  # временно отключено
 
 router = APIRouter()
 
@@ -144,10 +145,10 @@ async def generate_points(request: GenerateRequest):
     )
 
 
-# Эндпоинт: картинка маршрута
+# Эндпоинт: geojson маршрут с поддержкой оптимизации и различного транспорта
 
-@router.post("/route/image")
-async def route_image(
+@router.post("/route/geojson")
+async def route_geojson(
     request: RouteRequest,
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
@@ -157,45 +158,51 @@ async def route_image(
         description="Вид транспорта: car | walking | transit",
     ),
 ):
-    """
-    Возвращает GeoJSON маршрута с поддержкой различных алгоритмов оптимизации.
-    """
+    """Возвращает GeoJSON маршрута, построенного с учётом весов (время или расстояние)."""
     if len(request.points) < 2:
-        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
+        raise HTTPException(status_code=400, detail="Нужно минимум 2 точки")
 
-    # Получаем нужный порядок точек
     ordered_points, _, start_index, end_index = prepare_route_points(request)
     distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
 
+    # Определяем порядок точек
     if mode == "original":
         route_indices = list(range(len(ordered_points)))
     elif mode == "nn":
-        route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
+        route_indices = nearest_neighbor_route(
+            ordered_points, weight_matrix, 
+            start_index=start_index or 0, 
+            end_index=end_index
+        )
     else:  # optimized
-        nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
-        
-        # Используем комбинированную оптимизацию или обычную 2-opt
+        nn_route_indices = nearest_neighbor_route(
+            ordered_points, weight_matrix, 
+            start_index=start_index or 0, 
+            end_index=end_index
+        )
         if use_advanced:
             route_indices = optimize_route_advanced(
-                nn_route_indices,
-                distance_matrix,
+                nn_route_indices, weight_matrix,
                 use_or_opt=True,
                 use_simulated_annealing=use_annealing,
                 fixed_start=(start_index is not None),
                 fixed_end=(end_index is not None),
             )
         else:
-            route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+            route_indices = two_opt(
+                nn_route_indices, weight_matrix,
+                fixed_start=(start_index is not None),
+                fixed_end=(end_index is not None)
+            )
 
-    # Получаем координаты точек в нужном порядке
+    # Координаты точек в нужном порядке
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
-
-    # Получаем линию маршрута через OSRM (polyline)
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
     osrm_profile = osrm_profile_for_transport(profile)
     osrm_url = f"http://router.project-osrm.org/route/v1/{osrm_profile}/{osrm_coords}"
     osrm_params = {"overview": "full", "geometries": "geojson"}
-    osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=5)
+    osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=10)
+
     if osrm_resp.status_code != 200:
         raise HTTPException(status_code=502, detail="Ошибка запроса к OSRM")
     osrm_data = osrm_resp.json()
@@ -203,12 +210,28 @@ async def route_image(
         raise HTTPException(status_code=502, detail="OSRM не вернул маршрут")
     geometry = osrm_data["routes"][0]["geometry"]["coordinates"]
 
-    # Генерируем GeoJSON через map_render
-    from map_render import route_to_geojson
+    # Формируем GeoJSON
+    def route_to_geojson(route_coords, geometry):
+        return {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": geometry},
+                    "properties": {"name": "route", "optimize_by": optimize_by}
+                },
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                        "properties": {"order": idx}
+                    } for idx, (lon, lat) in enumerate(route_coords)
+                ]
+            ]
+        }
     import json
     geojson = route_to_geojson(route_coords, geometry)
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
-
 
 @router.post("/route/baseline", response_model=RouteResponse)
 async def calculate_baseline_route(
@@ -252,24 +275,31 @@ async def optimize_route(
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
     profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
 ):
-    """Оптимизация маршрута с поддержкой различных алгоритмов."""
+    """Оптимизация маршрута с учётом весов (расстояние или время с пробками)."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
+    # Подготовка точек
     ordered_points, has_street, start_index, end_index = prepare_route_points(request)
     distance_matrix, source = calculate_distance_matrix(ordered_points, transport=profile)
 
+    # Исходный порядок (для сравнения)
     original_order_ids = [p.id for p in ordered_points]
     original_route_indices = list(range(len(ordered_points)))
-    original_distance = calculate_route_distance(original_route_indices, distance_matrix)
+    original_weight = calculate_route_distance(original_route_indices, weight_matrix)
 
-    nn_route_indices = nearest_neighbor_route(ordered_points, distance_matrix, start_index=start_index or 0, end_index=end_index)
+    # Nearest Neighbor
+    nn_route_indices = nearest_neighbor_route(
+        ordered_points, weight_matrix, 
+        start_index=start_index or 0, 
+        end_index=end_index
+    )
     
-    # Используем комбинированную оптимизацию или обычную 2-opt
+    # Продвинутая оптимизация
     if use_advanced:
         optimized_route_indices = optimize_route_advanced(
             nn_route_indices,
-            distance_matrix,
+            weight_matrix,
             use_or_opt=True,
             use_simulated_annealing=use_annealing,
             fixed_start=(start_index is not None),
@@ -279,21 +309,67 @@ async def optimize_route(
         if use_annealing:
             algorithm += " + Simulated Annealing"
     else:
-        optimized_route_indices = two_opt(nn_route_indices, distance_matrix, fixed_start=(start_index is not None), fixed_end=(end_index is not None))
+        optimized_route_indices = two_opt(
+            nn_route_indices, weight_matrix, 
+            fixed_start=(start_index is not None), 
+            fixed_end=(end_index is not None)
+        )
         algorithm = "Nearest Neighbor + 2-opt"
 
-    optimized_distance = calculate_route_distance(optimized_route_indices, distance_matrix)
-    improvement = ((original_distance - optimized_distance) / original_distance) * 100 if original_distance > 0 else 0.0
+    optimized_weight = calculate_route_distance(optimized_route_indices, weight_matrix)
+    improvement = ((original_weight - optimized_weight) / original_weight) * 100 if original_weight > 0 else 0.0
 
     optimized_order_ids = [ordered_points[i].id for i in optimized_route_indices]
+
+    # Преобразуем вес в читаемый формат
+    if optimize_by == "duration":
+        original_value = round(original_weight / 60, 1)  # минуты
+        optimized_value = round(optimized_weight / 60, 1)
+        unit = "min"
+    else:
+        original_value = round(original_weight / 1000, 2)  # километры
+        optimized_value = round(optimized_weight / 1000, 2)
+        unit = "km"
 
     return OptimizedRouteResponse(
         original_order=original_order_ids,
         sorted_by_street=has_street,
         optimized_order=optimized_order_ids,
-        original_distance_km=original_distance / 1000,
-        optimized_distance_km=optimized_distance / 1000,
+        original_distance_km=original_value,  # переиспользуем поле для совместимости
+        optimized_distance_km=optimized_value,
         improvement_percent=round(improvement, 2),
-        algorithm_used=algorithm,
+        algorithm_used=f"{algorithm} (optimize_by={optimize_by})",
         matrix_source=source,
     )
+
+
+# Тестовый эндпоинт для проверки работы Яндекс API с вашим ключом
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from fastapi import Query as FastAPIQuery
+
+@router.get("/road-events")
+async def get_road_events(
+    lat: float = FastAPIQuery(56.8380, description="Широта центра (Екатеринбург)"),
+    lon: float = FastAPIQuery(60.5975, description="Долгота центра"),
+    radius_m: int = FastAPIQuery(15000, description="Радиус в метрах")
+):
+    conn = psycopg2.connect(
+        host="db",
+        database="traffic_db",
+        user="admin",
+        password="mysecret",
+        cursor_factory=RealDictCursor
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, event_type, title, latitude, longitude, severity, detected_at
+        FROM road_events
+        WHERE expires_at > NOW()
+          AND (6371000 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude)))) <= %s
+        ORDER BY detected_at DESC
+    """, (lat, lon, lat, radius_m))
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"events": events, "count": len(events)}

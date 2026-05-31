@@ -9,6 +9,7 @@ from utils import (
     sort_points_by_street_coordinates,
     resolve_points_with_coordinates,
     get_osrm_distance_wrapper,
+    get_osrm_route_info,
 )
 
 
@@ -20,9 +21,14 @@ def calculate_distance_matrix(
     """Расчет матрицы расстояний с поддержкой OSRM и векторизованного Haversine."""
     n = len(points)
     matrix = np.zeros((n, n))
-    source_used = method
+    # Приведение к Enum, если строка
+    if isinstance(method, str):
+        method_enum = DistanceMethod(method.lower()) if method.lower() in DistanceMethod.__members__.values() or method.lower() in ["osrm", "euclidean"] else DistanceMethod.OSRM
+    else:
+        method_enum = method
+    source_used = method_enum
 
-    if method == DistanceMethod.OSRM:
+    if method_enum == DistanceMethod.OSRM:
         # Сначала пробуем OSRM, на ошибку или таймаут переходим на Haversine
         osrm_failed = False
         for i in range(n):
@@ -44,6 +50,40 @@ def calculate_distance_matrix(
 
     return matrix, source_used.value
 
+def calculate_weight_matrix(
+    points: List[Point], 
+    weight_type: str = "duration",
+    transport: str = "driving"
+) -> Tuple[np.ndarray, str]:
+    """
+    Расчёт матрицы весов (время или расстояние) с учётом пробок через OSRM.
+    weight_type: "duration" (секунды) или "distance" (метры)
+    """
+    n = len(points)
+    matrix = np.zeros((n, n))
+    failed_count = 0
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            info = get_osrm_route_info(
+                f"{points[i].lon},{points[i].lat}",
+                f"{points[j].lon},{points[j].lat}",
+                transport=transport
+            )
+            if info:
+                if weight_type == "duration":
+                    weight = info["duration"]
+                else:
+                    weight = info["distance"]
+                matrix[i][j] = matrix[j][i] = weight
+            else:
+                # Fallback на евклидово расстояние (метры)
+                weight = haversine_distance(points[i], points[j])
+                matrix[i][j] = matrix[j][i] = weight
+                failed_count += 1
+    
+    source = "osrm" if failed_count == 0 else "osrm_partial_fallback"
+    return matrix, source
 
 def calculate_route_distance(
     route_order: List[int], 

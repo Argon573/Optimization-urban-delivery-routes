@@ -1,0 +1,71 @@
+services:
+  backend:
+    build: ./backend
+    container_name: route_backend
+    ports:
+      - "8000:8000"
+    environment:
+      OSRM_CAR_URL: http://osrm-car:5000
+      OSRM_BIKE_URL: http://osrm-bike:5001
+      OSRM_FOOT_URL: http://osrm-foot:5002
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  osrm-car:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-car
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm-data/car:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/car.osrm ]; then
+        osrm-extract -p /opt/car.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/car.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5000 /data/car.osrm
+      "
+    restart: unless-stopped
+
+  osrm-bike:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-bike
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./osrm-data/bike:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/bike.osrm ]; then
+        osrm-extract -p /opt/bicycle.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/bike.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5001 /data/bike.osrm
+      "
+    restart: unless-stopped
+
+  osrm-foot:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-foot
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./osrm-data/foot:/data
+    command: >
+      sh -c "
+      if [ ! -f /data/foot.osrm ]; then
+        osrm-extract -p /opt/foot.lua /data/uralsky-federal-district-latest.osm.pbf &&
+        osrm-partition /data/uralsky-federal-district-latest.osrm &&
+        osrm-customize /data/uralsky-federal-district-latest.osrm &&
+        mv /data/uralsky-federal-district-latest.osrm /data/foot.osrm
+      fi &&
+      osrm-routed --algorithm mld --ip 0.0.0.0 --port 5002 /data/foot.osrm
+      "
+    restart: unless-stopped
