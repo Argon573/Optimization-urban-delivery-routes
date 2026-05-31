@@ -1,22 +1,29 @@
+const API_BASE = 'http://194.124.211.6:8000';
 
 export async function getMap(startPoint, endPoint, points, transportProfile = 'car') {
-    try {
-        const params = new URLSearchParams({ profile: transportProfile });
-        const geojson = await fetch(`http://localhost:8000/route/image?${params}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                start_point: startPoint ? startPoint : null,
-                ...(endPoint && { end_point: endPoint }),
-                points: points
-            })
-        });
+    const params = new URLSearchParams({ profile: transportProfile });
+    const response = await fetch(`${API_BASE}/route/geojson?${params}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            start_point: startPoint ?? null,
+            ...(endPoint && { end_point: endPoint }),
+            points,
+        }),
+    });
 
-        return geojson.json();
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const detail = errorBody.detail;
+        const message = typeof detail === 'string'
+            ? detail
+            : Array.isArray(detail)
+                ? detail.map((e) => e.msg ?? String(e)).join(', ')
+                : 'Не удалось построить маршрут';
+        throw new Error(message);
     }
-    catch (error) {
-        console.error(error);
-    }
+
+    return response.json();
 }

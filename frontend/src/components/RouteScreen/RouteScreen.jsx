@@ -5,7 +5,7 @@ import Form from "./Form/Form";
 import TransportSelect from "./TransportSelect/TransportSelect";
 
 const RouteScreen = () => {
-    const { points, addPoint, transportProfile, setTransportProfile } = usePoints();
+    const { points, addPoint, removePoint, transportProfile, setTransportProfile } = usePoints();
 
     return (
         <div className={styles.container}>
@@ -26,6 +26,7 @@ const RouteScreen = () => {
                 <PointList
                     points={points}
                     addPoint={addPoint}
+                    removePoint={removePoint}
                 />
             </div>
 

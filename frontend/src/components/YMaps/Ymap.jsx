@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ymap.css";
 import { getMap } from "../../hooks/getMap";
+import { usePoints } from "../RouteScreen/PointsContext";
+import { buildRouteCacheKey } from "../../utils/routeCacheKey";
 import CustomZoomControl from "./custom control/CustomZoomControl";
 import styles from "./custom control/customZoomControl.module.scss";
 
-// Фикс иконок
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl:
@@ -18,15 +19,23 @@ L.Icon.Default.mergeOptions({
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// Компонент для обновления данных при bbox
 const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPoint, transportProfile }) => {
-    const [geojson, setGeojson] = useState(null);
+    const { routeGeoJson, routeCacheKey, cacheRoute } = usePoints();
+
+    const cacheKey = useMemo(
+        () => buildRouteCacheKey(routePoints, transportProfile, startPoint),
+        [routePoints, transportProfile, startPoint],
+    );
+
+    const displayGeoJson = cacheKey === routeCacheKey ? routeGeoJson : null;
 
     useEffect(() => {
         const load = async () => {
-
             if (!routePoints || routePoints.length < 2) {
-                console.log("Недостаточно точек для маршрута");
+                return;
+            }
+
+            if (cacheKey === routeCacheKey && routeGeoJson) {
                 return;
             }
 
@@ -34,14 +43,14 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
 
             try {
                 const pointsForRoute = routePoints.map((point, index) => ({
-                    id: index,
+                    id: point.id ?? index,
                     lat: point.latitude,
-                    lon: point.longitude
+                    lon: point.longitude,
                 }));
 
                 const data = await getMap(startPoint, endPoint, pointsForRoute, transportProfile);
 
-                setGeojson(data);
+                cacheRoute(data, cacheKey);
                 onLoad(data);
             } catch (e) {
                 console.error(e);
@@ -52,11 +61,16 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
         };
 
         load();
-    }, [routePoints, transportProfile, startPoint, endPoint]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when route inputs change (cacheKey)
+    }, [cacheKey]);
 
-    return geojson ? (
+    if (!displayGeoJson) {
+        return null;
+    }
+
+    return (
         <GeoJSON
-            data={geojson}
+            data={displayGeoJson}
             filter={(f) => {
                 const type = f?.geometry?.type;
                 return type && type !== "Polygon" && type !== "Point";
@@ -71,24 +85,23 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
                 }
             }}
         />
-    ) : null;
+    );
 };
 
 const Ymap = ({
                   initialBbox = "55.755864, 37.617698",
                   initialCenter,
                   initialZoom = 13,
-                  onLoad = () => console.log("Successful load map!"),
-                  onError = () => console.log("Error loading map!"),
+                  onLoad = () => {},
+                  onError = () => {},
                   Markers,
                   routePoints = [],
                   startPoint = null,
                   endPoint = null,
                   transportProfile = 'car',
               }) => {
-    const [bbox, setBbox] = useState(initialBbox);
+    const [bbox] = useState(initialBbox);
     const [loading, setLoading] = useState(false);
-
 
     return (
         <div className="leaflet" style={{ position: "relative" }}>

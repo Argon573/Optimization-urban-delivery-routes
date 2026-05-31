@@ -22,6 +22,28 @@ $marker-color: #6C63FF;
   }
 }
 
+.removeButton {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 20px;
+
+  &:hover {
+    color: #e53935;
+    background: #ffebee;
+  }
+}
+
 .marker {
   width: 16px;
   height: 16px;
@@ -46,6 +68,8 @@ $marker-color: #6C63FF;
 }
 
 .address {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
   color: var.$main-text-color;

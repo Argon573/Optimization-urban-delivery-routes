@@ -1,6 +1,11 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const PointsContext = createContext();
+
+const invalidateRouteCache = (setRouteGeoJson, setRouteCacheKey) => {
+    setRouteGeoJson(null);
+    setRouteCacheKey(null);
+};
 
 export const usePoints = () => {
     const context = useContext(PointsContext);
@@ -13,26 +18,36 @@ export const usePoints = () => {
 export const PointsProvider = ({ children }) => {
     const [points, setPoints] = useState([]);
     const [routeGeoJson, setRouteGeoJson] = useState(null);
+    const [routeCacheKey, setRouteCacheKey] = useState(null);
     const [transportProfile, setTransportProfile] = useState('car');
+
+    const invalidateRoute = useCallback(() => {
+        invalidateRouteCache(setRouteGeoJson, setRouteCacheKey);
+    }, []);
+
+    const cacheRoute = useCallback((geojson, cacheKey) => {
+        setRouteGeoJson(geojson);
+        setRouteCacheKey(cacheKey);
+    }, []);
 
     const addPoint = (point) => {
         setPoints(prev => [...prev, { ...point, id: Date.now() }]);
-        setRouteGeoJson(null);
+        invalidateRoute();
     };
 
     const removePoint = (id) => {
         setPoints(prev => prev.filter(point => point.id !== id));
-        setRouteGeoJson(null);
+        invalidateRoute();
     };
 
     const updateTransportProfile = (profile) => {
         setTransportProfile(profile);
-        setRouteGeoJson(null);
+        invalidateRoute();
     };
 
     const setGeneratedPoints = (newPoints) => {
         setPoints(newPoints);
-        setRouteGeoJson(null);
+        invalidateRoute();
     };
 
     return (
@@ -41,7 +56,9 @@ export const PointsProvider = ({ children }) => {
             addPoint,
             removePoint,
             routeGeoJson,
-            setRouteGeoJson,
+            routeCacheKey,
+            cacheRoute,
+            invalidateRoute,
             transportProfile,
             setTransportProfile: updateTransportProfile,
             setGeneratedPoints,
