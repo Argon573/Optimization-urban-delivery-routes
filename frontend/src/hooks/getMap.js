@@ -1,7 +1,8 @@
 
-export async function getMap(startPoint, endPoint, points) {
+export async function getMap(startPoint, endPoint, points, transportProfile = 'car') {
     try {
-        const geojson = await fetch('http://10.40.241.54:8000/route/image', {
+        const params = new URLSearchParams({ profile: transportProfile });
+        const geojson = await fetch(`http://localhost:8000/route/image?${params}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

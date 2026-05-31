@@ -4,8 +4,6 @@ import Settings from "../components/settings/Settings";
 import Screen404 from "../components/Errors/404 Screen/Screen404";
 import Layout from "../components/layouts/Layout";
 import Map from "../components/YMaps/Map";
-import Generation from '../components/settings/generation/Generation'
-
 const router = createBrowserRouter([
     {
         path: "/",
@@ -24,10 +22,6 @@ const router = createBrowserRouter([
                 path: "/settings",
                 element: <Settings/>,
             },
-            {
-                path: "/settings/generation",
-                element: <Generation/>
-            }
         ]
         }
     ]

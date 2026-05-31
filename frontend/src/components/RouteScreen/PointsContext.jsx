@@ -12,16 +12,27 @@ export const usePoints = () => {
 
 export const PointsProvider = ({ children }) => {
     const [points, setPoints] = useState([]);
-    const [routeGeoJson, setRouteGeoJson] = useState(null); // 👈 добавили
+    const [routeGeoJson, setRouteGeoJson] = useState(null);
+    const [transportProfile, setTransportProfile] = useState('car');
 
     const addPoint = (point) => {
         setPoints(prev => [...prev, { ...point, id: Date.now() }]);
-        setRouteGeoJson(null); // 👈 сбрасываем маршрут при изменении точек
+        setRouteGeoJson(null);
     };
 
     const removePoint = (id) => {
         setPoints(prev => prev.filter(point => point.id !== id));
-        setRouteGeoJson(null); // 👈 тоже сбрасываем
+        setRouteGeoJson(null);
+    };
+
+    const updateTransportProfile = (profile) => {
+        setTransportProfile(profile);
+        setRouteGeoJson(null);
+    };
+
+    const setGeneratedPoints = (newPoints) => {
+        setPoints(newPoints);
+        setRouteGeoJson(null);
     };
 
     return (
@@ -30,7 +41,10 @@ export const PointsProvider = ({ children }) => {
             addPoint,
             removePoint,
             routeGeoJson,
-            setRouteGeoJson // 👈 пробрасываем наружу
+            setRouteGeoJson,
+            transportProfile,
+            setTransportProfile: updateTransportProfile,
+            setGeneratedPoints,
         }}>
             {children}
         </PointsContext.Provider>

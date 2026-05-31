@@ -10,7 +10,7 @@ import { getUserPosition } from "../../hooks/getUserPosition"
 
 const Map = () => {
 
-    const { points, removePoint } = usePoints();
+    const { points, removePoint, transportProfile } = usePoints();
     const [userPosition, setUserPosition] = useState(null);
     /*
     useEffect(() => {
@@ -91,6 +91,7 @@ const Map = () => {
                 }
                 routePoints={points}
                 startPoint={userPoint}
+                transportProfile={transportProfile}
             />}
         </div>
     )

@@ -1,12 +1,16 @@
-import { NavLink } from "react-router-dom";
-import styles from './buttons.module.scss'
+import styles from './buttons.module.scss';
 
-const GenerationButton = ({}) => {
+const GenerationButton = ({ isOpen, onClick }) => {
     return (
-        <NavLink to='/settings/generation'>
-            <button className={styles.generationButton}>Generation</button>
-        </NavLink>
-    )
-}
+        <button
+            type="button"
+            className={`${styles.generationButton} ${isOpen ? styles.generationButtonActive : ''}`}
+            onClick={onClick}
+            aria-expanded={isOpen}
+        >
+            Генерация точек
+        </button>
+    );
+};
 
 export default GenerationButton;
