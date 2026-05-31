@@ -21,7 +21,7 @@ from services import (
     optimize_route_advanced,
     prepare_route_points,
 )
-from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates, osrm_profile_for_transport
+from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates, osrm_profile_for_transport, get_osrm_route_geometry
 from models import Point
 import requests
 import math
@@ -153,6 +153,7 @@ async def route_geojson(
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
+    optimize_by: str = Query("duration", description="Метрика оптимизации: duration | distance"),
     profile: TransportProfile = Query(
         TransportProfile.CAR,
         description="Вид транспорта: car | walking | transit",
@@ -165,18 +166,22 @@ async def route_geojson(
     ordered_points, _, start_index, end_index = prepare_route_points(request)
     distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
 
+    # Матрица весов (duration или distance) для оптимизации
+    transport_str = osrm_profile_for_transport(profile)
+    weight_matrix, weight_source = calculate_weight_matrix(ordered_points, weight_type=optimize_by, transport=transport_str)
+
     # Определяем порядок точек
     if mode == "original":
         route_indices = list(range(len(ordered_points)))
     elif mode == "nn":
         route_indices = nearest_neighbor_route(
-            ordered_points, weight_matrix, 
+            ordered_points, weight_matrix,
             start_index=start_index or 0, 
             end_index=end_index
         )
     else:  # optimized
         nn_route_indices = nearest_neighbor_route(
-            ordered_points, weight_matrix, 
+            ordered_points, weight_matrix,
             start_index=start_index or 0, 
             end_index=end_index
         )
@@ -199,16 +204,9 @@ async def route_geojson(
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
     osrm_profile = osrm_profile_for_transport(profile)
-    osrm_url = f"http://router.project-osrm.org/route/v1/{osrm_profile}/{osrm_coords}"
-    osrm_params = {"overview": "full", "geometries": "geojson"}
-    osrm_resp = requests.get(osrm_url, params=osrm_params, timeout=10)
-
-    if osrm_resp.status_code != 200:
-        raise HTTPException(status_code=502, detail="Ошибка запроса к OSRM")
-    osrm_data = osrm_resp.json()
-    if osrm_data.get("code") != "Ok":
-        raise HTTPException(status_code=502, detail="OSRM не вернул маршрут")
-    geometry = osrm_data["routes"][0]["geometry"]["coordinates"]
+    geometry = get_osrm_route_geometry(osrm_coords, profile=osrm_profile)
+    if geometry is None:
+        raise HTTPException(status_code=502, detail="Ошибка запроса к локальному OSRM (проверьте переменные OSRM_*_URL и доступность сервисов)")
 
     # Формируем GeoJSON
     def route_to_geojson(route_coords, geometry):
@@ -218,7 +216,12 @@ async def route_geojson(
                 {
                     "type": "Feature",
                     "geometry": {"type": "LineString", "coordinates": geometry},
-                    "properties": {"name": "route", "optimize_by": optimize_by}
+                    "properties": {
+                        "name": "route",
+                        "optimize_by": optimize_by,
+                        "matrix_source": weight_source,
+                        "profile": transport_str,
+                    }
                 },
                 *[
                     {
@@ -274,6 +277,7 @@ async def optimize_route(
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
     use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
     profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
+    optimize_by: str = Query("duration", description="Метрика оптимизации: duration | distance"),
 ):
     """Оптимизация маршрута с учётом весов (расстояние или время с пробками)."""
     if len(request.points) < 2:
@@ -281,7 +285,11 @@ async def optimize_route(
 
     # Подготовка точек
     ordered_points, has_street, start_index, end_index = prepare_route_points(request)
-    distance_matrix, source = calculate_distance_matrix(ordered_points, transport=profile)
+    distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
+
+    # Рассчитываем матрицу весов по выбранной метрике (duration/distance)
+    transport_str = osrm_profile_for_transport(profile)
+    weight_matrix, source = calculate_weight_matrix(ordered_points, weight_type=optimize_by, transport=transport_str)
 
     # Исходный порядок (для сравнения)
     original_order_ids = [p.id for p in ordered_points]

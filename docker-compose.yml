@@ -1,7 +1,6 @@
 services:
   backend:
     build: ./backend
-    container_name: route_backend
     ports:
       - "8000:8000"
     environment:
@@ -15,7 +14,6 @@ services:
 
   osrm-car:
     image: osrm/osrm-backend:latest
-    container_name: osrm-car
     ports:
       - "5000:5000"
     volumes:
@@ -34,7 +32,6 @@ services:
 
   osrm-bike:
     image: osrm/osrm-backend:latest
-    container_name: osrm-bike
     ports:
       - "5001:5001"
     volumes:
@@ -53,7 +50,6 @@ services:
 
   osrm-foot:
     image: osrm/osrm-backend:latest
-    container_name: osrm-foot
     ports:
       - "5002:5002"
     volumes:

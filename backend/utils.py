@@ -201,3 +201,29 @@ def get_osrm_duration_wrapper(point1: Point, point2: Point, transport: str = "dr
     p2_key = f"{point2.lon},{point2.lat}"
     info = get_osrm_route_info(p1_key, p2_key, transport)
     return info["duration"] if info else None
+
+
+def get_osrm_route_geometry(coords: str, profile: str = "driving") -> Optional[list]:
+    """Запрашивает геометрию маршрута (GeoJSON coordinates) у локального OSRM.
+
+    coords: строка вида 'lon,lat;lon,lat;...'
+    profile: 'driving' | 'walking' | 'cycling'
+    Возвращает список координат линии или None при ошибке.
+    """
+    if profile == "walking":
+        base_url = OSRM_FOOT_URL
+    elif profile == "cycling":
+        base_url = OSRM_BIKE_URL
+    else:
+        base_url = OSRM_CAR_URL
+
+    try:
+        url = f"{base_url}/route/v1/{profile}/{coords}"
+        params = {"overview": "full", "geometries": "geojson"}
+        resp = requests.get(url, params=params, timeout=10)
+        data = resp.json()
+        if resp.status_code == 200 and data.get("code") == "Ok":
+            return data["routes"][0]["geometry"]["coordinates"]
+        return None
+    except Exception:
+        return None
