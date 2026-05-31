@@ -1,0 +1,51 @@
+@use '../../../assets/variables' as var;
+
+$button-color: #64748B;
+
+a {
+  text-decoration: none;
+}
+
+.panel {
+  position: absolute;
+  z-index: 100;
+  height: 15dvh;
+  width: 100%;
+  background-color: var.$main-color;
+  bottom: 0px;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 0 10px 0 #00000040;
+}
+
+.mapButton {
+  margin-left: clamp(37px, 12.5vw, 60px);
+}
+
+.settingsButton {
+  margin-right: clamp(37px, 12.5vw, 60px);
+}
+
+.icons {
+  width: clamp(40px, 3vh, 80px);
+  height: clamp(40px, 3vh, 80px);
+}
+
+.active .button {
+  color: var.$main-elements-color;
+}
+
+
+.button {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: $button-color;
+}

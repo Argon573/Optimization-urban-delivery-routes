@@ -1,0 +1,34 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main, DevOps ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Execute deployment commands on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            cd /home/developer/delivery-optimizer
+            git pull origin DevOps
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            cd /home/developer/delivery-optimizer/frontend
+            npm install
+            npm run build
+            sudo systemctl restart nginx
+            docker ps -a

@@ -1,0 +1,139 @@
+@use '../../../assets/variables' as var;
+
+$marker-color: #6C63FF;
+
+.list {
+  border: #000000 1px solid;
+  border-radius: 10px;
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  box-shadow: 2px 2px 10px 0 #00000040;
+}
+
+.pointSection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 10px 5px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid $marker-color;
+  }
+}
+
+.marker {
+  width: 16px;
+  height: 16px;
+  background-color: $marker-color;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1;
+  box-shadow: 1px 1px 8px 0 $marker-color;
+  flex-shrink: 0;
+  position: relative;
+
+  span:first-child {
+    box-sizing: content-box;
+    position: relative;
+    top: 0.5px;
+    right: 0.5px;
+  }
+}
+
+.address {
+  font-size: 14px;
+  font-weight: 500;
+  color: var.$main-text-color;
+}
+
+.inputForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-content: start;
+  width: 100%;
+  max-height: 130px;
+  position: relative;
+}
+
+.addPointSection {
+  marker: none;
+}
+
+.inputPoint {
+  border: none;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.autoComplete {
+  position: absolute;
+  background-color: #fbf7f7;
+  border: 1px solid gray;
+  border-radius: 8px;
+  top: 200%;
+  left: -2.5%;
+  width: 105%;
+  z-index: 1000;
+  height: 100px;
+  overflow: scroll;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 5px;
+  min-height: 150px;
+}
+
+.autocompleteElement:not(:last-child) {
+  border-bottom: 1px solid #000000;
+}
+
+.errorMessage {
+  color: red;
+}
+
+.submitButton {
+  height: 90%;
+  border: none;
+  background-color: transparent;
+}
+
+
+.loader {
+  width: 25px;
+  height: 25px;
+  border: 5px solid #ddd;
+  border-top: 5px solid grey; // цвет активной части
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.inputWrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+.checkmark {
+  width: 100%;
+  height: 100%;
+}
+
+.inputPoint {
+  width: 100%;
+}
