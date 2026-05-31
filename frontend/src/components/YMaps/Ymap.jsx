@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // Компонент для обновления данных при bbox
-const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPoint }) => {
+const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPoint, transportProfile }) => {
     const [geojson, setGeojson] = useState(null);
 
     useEffect(() => {
@@ -39,7 +39,7 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
                     lon: point.longitude
                 }));
 
-                const data = await getMap(startPoint, endPoint, pointsForRoute);
+                const data = await getMap(startPoint, endPoint, pointsForRoute, transportProfile);
 
                 setGeojson(data);
                 onLoad(data);
@@ -52,7 +52,7 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
         };
 
         load();
-    }, [routePoints]);
+    }, [routePoints, transportProfile, startPoint, endPoint]);
 
     return geojson ? (
         <GeoJSON
@@ -84,6 +84,7 @@ const Ymap = ({
                   routePoints = [],
                   startPoint = null,
                   endPoint = null,
+                  transportProfile = 'car',
               }) => {
     const [bbox, setBbox] = useState(initialBbox);
     const [loading, setLoading] = useState(false);
@@ -112,6 +113,7 @@ const Ymap = ({
                     routePoints={routePoints}
                     startPoint={startPoint}
                     endPoint={endPoint}
+                    transportProfile={transportProfile}
                 />
             </MapContainer>
 

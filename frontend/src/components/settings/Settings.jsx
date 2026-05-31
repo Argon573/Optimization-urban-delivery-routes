@@ -1,17 +1,22 @@
+import { useState } from 'react';
 import GenerationButton from './buttons/GenerationButton';
+import GenerationMenu from './generation/GenerationMenu';
 import styles from './settings.module.scss';
-import {Outlet} from "react-router-dom";
 
 const Settings = () => {
-    return (
-        <div>
-            <div className={styles.container}>
-                <GenerationButton />
-            </div>
+    const [menuOpen, setMenuOpen] = useState(false);
 
-            <Outlet />
+    return (
+        <div className={styles.wrapper}>
+            <div className={styles.container}>
+                <GenerationButton
+                    isOpen={menuOpen}
+                    onClick={() => setMenuOpen((prev) => !prev)}
+                />
+                {menuOpen && <GenerationMenu />}
+            </div>
         </div>
-    )
-}
+    );
+};
 
 export default Settings;

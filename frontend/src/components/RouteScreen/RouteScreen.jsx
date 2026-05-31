@@ -2,9 +2,10 @@ import { usePoints } from './PointsContext';
 import styles from "./routescreen.module.scss";
 import PointList from "./PointForm/PointList";
 import Form from "./Form/Form";
+import TransportSelect from "./TransportSelect/TransportSelect";
 
 const RouteScreen = () => {
-    const { points, addPoint } = usePoints();
+    const { points, addPoint, transportProfile, setTransportProfile } = usePoints();
 
     return (
         <div className={styles.container}>
@@ -13,9 +14,9 @@ const RouteScreen = () => {
                 placeholder="Мое местоположение"
             />
 
-            <Form
-                title="Вид транспорта"
-                placeholder="Автомобиль"
+            <TransportSelect
+                value={transportProfile}
+                onChange={setTransportProfile}
             />
 
 
