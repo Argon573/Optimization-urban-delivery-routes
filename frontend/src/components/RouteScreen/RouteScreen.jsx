@@ -2,7 +2,7 @@ import { usePoints } from './PointsContext';
 import layoutStyles from '../layouts/layout.module.scss';
 import styles from "./routescreen.module.scss";
 import PointList from "./PointForm/PointList";
-import Form from "./Form/Form";
+import StartPointForm from "./StartPointForm/StartPointForm";
 import TransportSelect from "./TransportSelect/TransportSelect";
 
 const RouteScreen = () => {
@@ -11,10 +11,7 @@ const RouteScreen = () => {
     return (
         <div className={layoutStyles.pagePanel}>
             <div className={layoutStyles.pageContent}>
-                <Form
-                    title="Отправная точка"
-                    placeholder="Мое местоположение"
-                />
+                <StartPointForm />
 
                 <TransportSelect
                     value={transportProfile}

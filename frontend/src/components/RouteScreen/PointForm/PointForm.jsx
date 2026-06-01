@@ -2,26 +2,8 @@ import { useState } from "react";
 import { usePhotonSearch } from "../../../hooks/usePhotonSearch";
 import styles from "./PointForm.module.scss";
 import { getGeocodeFromAddress } from "../../../hooks/getGeocodeFromAddress";
+import { parseAddress } from "../../../utils/parseAddress";
 import { IoMdCheckmark } from "react-icons/io";
-
-
-function parseAddress(address) {
-    // Приоритет: сначала ищем запятую, потом пробел
-    const commaMatch = address.match(/^(.*?),\s*(.+)$/);
-    if (commaMatch) {
-        return [commaMatch[1], commaMatch[2]];
-    }
-
-    const spaceMatch = address.match(/^(.*?)\s+([^\s]+)$/);
-    if (spaceMatch) {
-        return [spaceMatch[1], spaceMatch[2]];
-    }
-
-    return [address, ""];
-}
-
-
-
 
 const PointForm = ({ onSelect }) => {
     const [query, setQuery] = useState('');

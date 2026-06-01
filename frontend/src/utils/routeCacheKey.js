@@ -4,7 +4,7 @@ export function buildRouteCacheKey(routePoints, transportProfile, startPoint) {
         .join('|');
 
     const startKey = startPoint
-        ? `${startPoint.lat}:${startPoint.lon}`
+        ? `${startPoint.lat ?? startPoint.latitude}:${startPoint.lon ?? startPoint.longitude}`
         : '';
 
     return `${transportProfile}::${startKey}::${pointsKey}`;

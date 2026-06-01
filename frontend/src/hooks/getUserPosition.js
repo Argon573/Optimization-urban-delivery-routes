@@ -1,7 +1,7 @@
 export const getUserPosition = () => {
     return new Promise((resolve, reject) => {
-        if (!("geolocation" in navigator)) {
-            return reject(new Error("Геолокация не поддерживается"));
+        if (!('geolocation' in navigator)) {
+            return reject(new Error('Геолокация не поддерживается'));
         }
 
         navigator.geolocation.getCurrentPosition(

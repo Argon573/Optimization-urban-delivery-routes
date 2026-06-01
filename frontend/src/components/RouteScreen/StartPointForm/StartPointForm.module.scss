@@ -1,0 +1,121 @@
+@use '../../../assets/variables' as var;
+
+.field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+}
+
+.title {
+  font-size: var.$main-font-size;
+  font-weight: var.$main-font-weight;
+  color: var.$main-text-color;
+}
+
+.inputBox {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border: var.$secondary 1px solid;
+  border-radius: 8px;
+  box-shadow: 2px 2px 10px 0 #00000040;
+  background: white;
+  overflow: hidden;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  padding: 0 4px 0 12px;
+  font-size: 12px;
+  font-weight: var.$main-font-weight;
+  color: var.$main-text-color;
+  background: transparent;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var.$main-text-color;
+  }
+}
+
+.submitButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.checkmark {
+  width: 22px;
+  height: 22px;
+  color: var.$main-elements-color;
+}
+
+.loader {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #ddd;
+  border-top-color: var.$main-elements-color;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.inputError {
+  border-color: #e53935;
+}
+
+.errorMessage {
+  color: #e53935;
+  font-size: 11px;
+}
+
+.autoComplete {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: #fbf7f7;
+  border: 1px solid gray;
+  border-radius: 8px;
+  z-index: 1000;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 5px;
+  box-shadow: 2px 2px 10px 0 #00000040;
+}
+
+.autocompleteElement {
+  padding: 8px 6px;
+  cursor: pointer;
+  font-size: 12px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #000000;
+  }
+
+  &:hover {
+    background: #f0f0f0;
+  }
+}
