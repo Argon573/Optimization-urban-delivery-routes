@@ -2,19 +2,17 @@ name: Deploy to Server
 
 on:
   push:
-    branches: [ main, DevOps ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to VPS
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Execute deployment commands on server
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -23,12 +21,11 @@ jobs:
           script_stop: true
           script: |
             cd /home/developer/delivery-optimizer
-            git pull origin DevOps
+            git pull origin master
             docker compose down
             docker compose build --no-cache
             docker compose up -d
-            cd /home/developer/delivery-optimizer/frontend
+            cd frontend
             npm install
             npm run build
             sudo systemctl restart nginx
-            docker ps -a
