@@ -1,9 +1,10 @@
 @use './../../../assets/variables' as vars;
 
-header {
-  position: absolute;
+.header {
+  flex: 0 0 auto;
   width: 100%;
-  height: 12vh;
+  height: vars.$header-height;
+  min-height: vars.$header-height;
   background-color: vars.$main-color;
   z-index: 100;
   display: flex;

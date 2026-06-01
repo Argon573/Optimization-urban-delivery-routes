@@ -104,11 +104,12 @@ const Ymap = ({
     const [loading, setLoading] = useState(false);
 
     return (
-        <div className="leaflet" style={{ position: "relative" }}>
+        <div className="leaflet" style={{ position: "absolute", inset: 0 }}>
             <MapContainer
                 center={initialCenter}
                 zoom={initialZoom}
                 className="leaflet-container"
+                style={{ width: '100%', height: '100%' }}
             >
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"

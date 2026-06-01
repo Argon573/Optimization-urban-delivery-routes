@@ -4,3 +4,8 @@ $main-elements-color: #6C63FF;
 $secondary: #64748B;
 $main-font-size: 14px;
 $main-font-weight: 500;
+
+$header-height: clamp(56px, 12vh, 80px);
+$panel-height: clamp(64px, 15dvh, 96px);
+$side-padding: clamp(16px, 5.5vw, 48px);
+$page-content-max-width: 560px;

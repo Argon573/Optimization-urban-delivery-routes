@@ -1,4 +1,5 @@
 import { usePoints } from './PointsContext';
+import layoutStyles from '../layouts/layout.module.scss';
 import styles from "./routescreen.module.scss";
 import PointList from "./PointForm/PointList";
 import Form from "./Form/Form";
@@ -8,29 +9,28 @@ const RouteScreen = () => {
     const { points, addPoint, removePoint, transportProfile, setTransportProfile } = usePoints();
 
     return (
-        <div className={styles.container}>
-            <Form
-                title="Отправная точка"
-                placeholder="Мое местоположение"
-            />
-
-            <TransportSelect
-                value={transportProfile}
-                onChange={setTransportProfile}
-            />
-
-
-            <div className={styles.listContainer}>
-                <h3>Точки маршрута</h3>
-
-                <PointList
-                    points={points}
-                    addPoint={addPoint}
-                    removePoint={removePoint}
+        <div className={layoutStyles.pagePanel}>
+            <div className={layoutStyles.pageContent}>
+                <Form
+                    title="Отправная точка"
+                    placeholder="Мое местоположение"
                 />
+
+                <TransportSelect
+                    value={transportProfile}
+                    onChange={setTransportProfile}
+                />
+
+                <div className={styles.listContainer}>
+                    <h3>Точки маршрута</h3>
+
+                    <PointList
+                        points={points}
+                        addPoint={addPoint}
+                        removePoint={removePoint}
+                    />
+                </div>
             </div>
-
-
         </div>
     );
 };
