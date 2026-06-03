@@ -205,11 +205,17 @@ async def route_geojson(
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
     osrm_profile = osrm_profile_for_transport(profile)
     geometry = get_osrm_route_geometry(osrm_coords, profile=osrm_profile)
+    geometry_source = "osrm"
+    # Если OSRM недоступен, но есть хотя бы 2 точки — вернём LineString напрямую из поданных координат
     if geometry is None:
-        raise HTTPException(status_code=502, detail="Ошибка запроса к локальному OSRM (проверьте переменные OSRM_*_URL и доступность сервисов)")
+        if len(route_coords) >= 2:
+            geometry = [[lon, lat] for lon, lat in route_coords]
+            geometry_source = "direct_fallback"
+        else:
+            raise HTTPException(status_code=502, detail="Ошибка запроса к локальному OSRM (проверьте переменные OSRM_*_URL и доступность сервисов)")
 
     # Формируем GeoJSON
-    def route_to_geojson(route_coords, geometry):
+    def route_to_geojson(route_coords, geometry, geometry_source):
         return {
             "type": "FeatureCollection",
             "features": [
@@ -221,6 +227,7 @@ async def route_geojson(
                         "optimize_by": optimize_by,
                         "matrix_source": weight_source,
                         "profile": transport_str,
+                        "geometry_source": geometry_source,
                     }
                 },
                 *[
@@ -233,7 +240,7 @@ async def route_geojson(
             ]
         }
     import json
-    geojson = route_to_geojson(route_coords, geometry)
+    geojson = route_to_geojson(route_coords, geometry, geometry_source)
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
 
 @router.post("/route/baseline", response_model=RouteResponse)
