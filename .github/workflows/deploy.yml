@@ -21,11 +21,18 @@ jobs:
           script_stop: true
           script: |
             cd /home/developer/delivery-optimizer
-            git pull origin master
+            git fetch --all
+            git reset --hard origin/master
+            
+            # Деплой бэкенда
             docker compose down
             docker compose build --no-cache
             docker compose up -d
+            
+            # Деплой фронтенда
             cd frontend
             npm install
             npm run build
+            
+            # Перезапуск nginx
             sudo systemctl restart nginx
