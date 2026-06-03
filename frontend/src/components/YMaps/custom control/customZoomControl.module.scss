@@ -1,15 +1,15 @@
 .zoomContainer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(6px, 1.5vw, 8px);
   background: transparent;
   pointer-events: auto;
   border: none;
 }
 
 .zoomBtn {
-  width: 40px;
-  height: 40px;
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
   padding: 0;
   margin: 0;
   background-color: #ffffff;
@@ -34,10 +34,22 @@
 }
 
 .zoomIcon {
-  width: 22px;
-  height: 22px;
+  width: clamp(16px, 4.5vw, 22px);
+  height: clamp(16px, 4.5vw, 22px);
   display: block;
   flex-shrink: 0;
   pointer-events: none;
   overflow: visible;
+}
+
+@media (min-width: 1024px) {
+  .zoomBtn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .zoomIcon {
+    width: 22px;
+    height: 22px;
+  }
 }

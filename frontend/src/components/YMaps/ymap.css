@@ -19,7 +19,7 @@
 }
 
 .leaflet-top.leaflet-right {
-  right: 16px;
+  right: clamp(10px, 3vw, 16px);
   top: 50%;
   transform: translateY(-50%);
   margin-top: 0;
@@ -28,7 +28,7 @@
 .custom-icon-zoom {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(6px, 1.5vw, 8px);
   margin: 0;
   background: transparent;
   border: none;

@@ -57,10 +57,16 @@
   border-radius: 50%;
   background: transparent;
   padding: 0;
+  margin-right: 6px;
   cursor: pointer;
 
   &:hover {
     background: #eef0ff;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
