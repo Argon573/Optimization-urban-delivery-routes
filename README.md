@@ -11,7 +11,7 @@
 ---
 
 ## 📸 Интерфейс
-| **Главный экран** | **Построение маршрута** | **История заказов** |
+| **Главный экран** | **Построение маршрута** | **Настройки** |
 | :--- | :--- | :--- |
 | ![Main](screenshots/mainScreen.jpg) | ![Route](screenshots/RouteScreen.jpg) | ![Settings](screenshots/SettingsScreen.jpg) |
 | **History**  | **Favorite** | **Generation** |
