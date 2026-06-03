@@ -1,10 +1,33 @@
-@use '../../../assets/variables' as var;
+.zoomContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: transparent;
+  pointer-events: auto;
+}
 
-rect {
-  width: 30px;
-  height: 30px;
-  display: inline-block;
-  border: var.$main-elements-color solid 1px;
+.zoomBtn {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #6C63FF;
   border-radius: 50%;
-  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.25);
+  color: #6C63FF;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+  
+  // Улучшение для iOS
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.1s ease;
+
+  &:active {
+    transform: scale(0.9);
+    background-color: #f0f0ff;
+  }
 }
