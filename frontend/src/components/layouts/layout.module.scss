@@ -12,24 +12,84 @@
   background-color: vars.$main-color;
 }
 
-.main {
-  flex: 1 1 auto;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
+.mobileHeader {
+  flex: 0 0 auto;
+  z-index: 100;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    display: none;
+  }
 }
 
-.pagePanel {
-  position: absolute;
-  inset: 0;
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 16px vars.$side-padding 12px;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    flex-direction: row;
+  }
+}
+
+.sidebar {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: vars.$main-color;
+  z-index: 10;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    flex: 0 0 vars.$sidebar-width;
+    width: vars.$sidebar-width;
+    max-width: vars.$sidebar-width;
+    border-right: 1px solid #e2e8f0;
+    box-shadow: 2px 0 12px 0 #0000000f;
+  }
+}
+
+.desktopHeader {
+  display: none;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    display: block;
+    flex: 0 0 auto;
+  }
+}
+
+.sidebarContent {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.mapPane {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  background: #eef2f6;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    display: block;
+  }
+}
+
+.pagePanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 16px vars.$side-padding 12px;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    padding: 20px 24px 16px;
+    min-height: auto;
+  }
 }
 
 .pageContent {
@@ -38,15 +98,15 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
+
+  @media (min-width: vars.$desktop-breakpoint) {
+    max-width: none;
+  }
 }
 
-@media (min-width: 1024px) {
-  .pagePanel {
-    padding-top: 24px;
-    padding-bottom: 24px;
-  }
-
-  .pageContent {
-    max-width: 480px;
-  }
+.mobileMapPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  position: relative;
 }

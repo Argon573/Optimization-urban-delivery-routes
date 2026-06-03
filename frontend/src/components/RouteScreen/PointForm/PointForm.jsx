@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePhotonSearch } from "../../../hooks/usePhotonSearch";
 import styles from "./PointForm.module.scss";
 import { getGeocodeFromAddress } from "../../../hooks/getGeocodeFromAddress";
 import { parseAddress } from "../../../utils/parseAddress";
 import { IoMdCheckmark } from "react-icons/io";
 
-const PointForm = ({ onSelect }) => {
+const PointForm = ({ onSelect, onSuggestionsOpen }) => {
     const [query, setQuery] = useState('');
     const [currentAddress, setCurrentAddress] = useState('');
     const suggestions = usePhotonSearch(query);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const hasSuggestions = suggestions.length > 0 && !isLoading;
+    
+    useEffect(() => {
+        onSuggestionsOpen?.(hasSuggestions);
+    }, [hasSuggestions]);
+
+    
 
     const handleSelect = (item) => {
         const fullAddress = `${item.street || ''} ${item.name || ''}, Екатеринбург`;

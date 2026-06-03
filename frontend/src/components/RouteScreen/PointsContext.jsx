@@ -23,6 +23,7 @@ export const PointsProvider = ({ children }) => {
     const [transportProfile, setTransportProfile] = useState('car');
     const [startPoint, setStartPointState] = useState(null);
     const [geolocationStatus, setGeolocationStatus] = useState('pending');
+    const [routeBuildToken, setRouteBuildToken] = useState(0);
 
     const invalidateRoute = useCallback(() => {
         invalidateRouteCache(setRouteGeoJson, setRouteCacheKey);
@@ -94,6 +95,31 @@ export const PointsProvider = ({ children }) => {
         invalidateRoute();
     };
 
+    const requestRouteBuild = useCallback(() => {
+        invalidateRoute();
+        setRouteBuildToken((token) => token + 1);
+    }, [invalidateRoute]);
+
+    const resetAll = useCallback(async () => {
+        setPoints([]);
+        invalidateRoute();
+
+        try {
+            const [latitude, longitude] = await getUserPosition();
+            setGeolocationStatus('granted');
+            setStartPointState({
+                id: 'start',
+                address: 'Мое местоположение',
+                latitude,
+                longitude,
+                isUserLocation: true,
+            });
+        } catch {
+            setGeolocationStatus('denied');
+            setStartPointState(null);
+        }
+    }, [invalidateRoute]);
+
     const apiStartPoint = startPoint
         ? {
             id: -1,
@@ -119,6 +145,9 @@ export const PointsProvider = ({ children }) => {
             geolocationStatus,
             apiStartPoint,
             applyUserLocation,
+            requestRouteBuild,
+            resetAll,
+            routeBuildToken,
         }}>
             {children}
         </PointsContext.Provider>

@@ -20,7 +20,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPoint, transportProfile }) => {
-    const { routeGeoJson, routeCacheKey, cacheRoute } = usePoints();
+    const { routeGeoJson, routeCacheKey, cacheRoute, routeBuildToken } = usePoints();
 
     const cacheKey = useMemo(
         () => buildRouteCacheKey(routePoints, transportProfile, startPoint),
@@ -61,8 +61,8 @@ const DataLayer = ({ onLoad, onError, setLoading, routePoints, startPoint, endPo
         };
 
         load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when route inputs change (cacheKey)
-    }, [cacheKey]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cacheKey, routeBuildToken]);
 
     if (!displayGeoJson) {
         return null;

@@ -4,6 +4,13 @@
   align-items: stretch;
   gap: 15px;
   width: 100%;
+
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+  }
 }
 
 .suggestions {

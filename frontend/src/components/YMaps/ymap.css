@@ -18,12 +18,18 @@
   display: none;
 }
 
+.leaflet-top.leaflet-right {
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-top: 0;
+}
+
 .custom-icon-zoom {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
-  margin-right: 12px;
+  margin: 0;
 }
 
 .custom-icon-zoom svg {

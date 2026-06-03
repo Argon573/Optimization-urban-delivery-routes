@@ -4,6 +4,7 @@ import styles from "./routescreen.module.scss";
 import PointList from "./PointForm/PointList";
 import StartPointForm from "./StartPointForm/StartPointForm";
 import TransportSelect from "./TransportSelect/TransportSelect";
+import RouteActions from "./RouteActions/RouteActions";
 
 const RouteScreen = () => {
     const { points, addPoint, removePoint, transportProfile, setTransportProfile } = usePoints();
@@ -27,6 +28,8 @@ const RouteScreen = () => {
                         removePoint={removePoint}
                     />
                 </div>
+
+                <RouteActions />
             </div>
         </div>
     );

@@ -2,11 +2,40 @@
 
 $button-color: #64748B;
 
-a {
+.navItem {
   text-decoration: none;
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: $button-color;
+  font-size: 12px;
+  font-weight: var.$main-font-weight;
+  padding: 8px 12px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+
+  span {
+    line-height: 1.2;
+    text-align: center;
+  }
 }
 
-.panel {
+.active {
+  color: var.$main-elements-color;
+}
+
+.icons {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.panelMobile {
   flex: 0 0 auto;
   z-index: 100;
   height: var.$panel-height;
@@ -15,53 +44,43 @@ a {
   background-color: var.$main-color;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   align-items: center;
-  justify-content: space-between;
   box-shadow: 0 0 10px 0 #00000040;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0));
 
-.mapButton {
-  margin-left: clamp(37px, 12.5vw, 60px);
-}
-
-.settingsButton {
-  margin-right: clamp(37px, 12.5vw, 60px);
-}
-
-@media (min-width: 1024px) {
-  .mapButton {
-    margin-left: clamp(48px, 10vw, 160px);
-  }
-
-  .settingsButton {
-    margin-right: clamp(48px, 10vw, 160px);
-  }
-
-  .icons {
-    width: 48px;
-    height: 48px;
+  @media (min-width: var.$desktop-breakpoint) {
+    display: none;
   }
 }
 
-.icons {
-  width: clamp(40px, 3vh, 80px);
-  height: clamp(40px, 3vh, 80px);
-}
+.panelDesktop {
+  flex: 0 0 auto;
+  display: none;
+  width: 100%;
+  padding: 12px 24px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: var.$main-color;
+  gap: 8px;
 
-.active .button {
-  color: var.$main-elements-color;
-}
+  @media (min-width: var.$desktop-breakpoint) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
 
+  .navItem {
+    flex: none;
+    padding: 10px 8px;
+    border-radius: 10px;
 
-.button {
-  background: none;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: $button-color;
+    &:hover {
+      background: #f8fafc;
+    }
+  }
+
+  .active {
+    background: #eef0ff;
+  }
 }
