@@ -30,8 +30,16 @@
   flex-direction: column;
   gap: 8px;
   margin: 0;
+  background: transparent;
+  border: none;
+}
+
+.custom-icon-zoom button {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .custom-icon-zoom svg {
   display: block;
+  overflow: visible;
 }

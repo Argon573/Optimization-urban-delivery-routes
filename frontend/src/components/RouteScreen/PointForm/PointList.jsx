@@ -28,10 +28,13 @@ const PointList = ({ points, addPoint, removePoint }) => {
                 </li>
             ))}
             <li className={styles.pointSection}>
-                <PointForm
-                    onSelect={addPoint}
-                    onSuggestionsOpen={setAutocompleteOpen}
-                />
+                <span className={styles.markerPlaceholder} aria-hidden />
+                <div className={styles.formCell}>
+                    <PointForm
+                        onSelect={addPoint}
+                        onSuggestionsOpen={setAutocompleteOpen}
+                    />
+                </div>
             </li>
         </ul>
     );
