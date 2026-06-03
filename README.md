@@ -11,11 +11,13 @@
 ---
 
 ## 📸 Интерфейс
-| Главный экран | Построение маршрута | История заказов |
+| **Главный экран** | **Построение маршрута** | **История заказов** |
 | :--- | :--- | :--- |
-| ![Главный](screenshots/mainScreen.jpg) | ![Маршрут](screenshots/RouteScreen.jpg) | ![История](screenshots/History.jpg) |
+| ![Main](screenshots/mainScreen.jpg) | ![Route](screenshots/RouteScreen.jpg) | ![Settings](screenshots/SettingsScreen.jpg) |
+| **History**  | **Favorite** | **Generation** |
+| ![History](screenshots/History.jpg) | ![Favorite](screenshots/FavoriteRoutes.jpg) | ![Generation](screenshots/Generation.jpg) |
 
-![Desktop](screenshots/DesktopScreen/jpg)
+![Desktop](screenshots/DesktopScreen.png)
 
 ---
 
