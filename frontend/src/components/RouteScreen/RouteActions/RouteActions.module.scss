@@ -24,8 +24,13 @@
   color: white;
   text-transform: lowercase;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #5a52e0;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 

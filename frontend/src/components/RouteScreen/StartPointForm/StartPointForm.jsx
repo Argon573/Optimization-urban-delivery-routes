@@ -19,7 +19,7 @@ const StartPointForm = () => {
 
     const placeholder = geolocationStatus === 'granted'
         ? PLACEHOLDER_GRANTED
-        : PLACEHOLDER_DENIED;
+        : PLACEHOLDER_DENIED; // idle | denied
 
     useEffect(() => {
         if (startPoint && !startPoint.isUserLocation) {

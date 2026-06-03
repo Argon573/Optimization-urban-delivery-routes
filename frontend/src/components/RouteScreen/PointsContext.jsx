@@ -1,5 +1,9 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { getUserPosition } from '../../hooks/getUserPosition';
+import { getMap } from '../../hooks/getMap';
+import { buildRouteCacheKey } from '../../utils/routeCacheKey';
+import { runSimulatedProgress } from '../../utils/simulatedProgress';
+import { saveToHistory, formatRouteLabel } from '../../services/routeStorage';
 
 const PointsContext = createContext();
 
@@ -22,8 +26,10 @@ export const PointsProvider = ({ children }) => {
     const [routeCacheKey, setRouteCacheKey] = useState(null);
     const [transportProfile, setTransportProfile] = useState('car');
     const [startPoint, setStartPointState] = useState(null);
-    const [geolocationStatus, setGeolocationStatus] = useState('pending');
-    const [routeBuildToken, setRouteBuildToken] = useState(0);
+    const [geolocationStatus, setGeolocationStatus] = useState('idle');
+    const [isBuilding, setIsBuilding] = useState(false);
+    const [buildProgress, setBuildProgress] = useState(0);
+    const [buildError, setBuildError] = useState(null);
 
     const invalidateRoute = useCallback(() => {
         invalidateRouteCache(setRouteGeoJson, setRouteCacheKey);
@@ -32,23 +38,6 @@ export const PointsProvider = ({ children }) => {
     const cacheRoute = useCallback((geojson, cacheKey) => {
         setRouteGeoJson(geojson);
         setRouteCacheKey(cacheKey);
-    }, []);
-
-    useEffect(() => {
-        getUserPosition()
-            .then(([latitude, longitude]) => {
-                setGeolocationStatus('granted');
-                setStartPointState({
-                    id: 'start',
-                    address: 'Мое местоположение',
-                    latitude,
-                    longitude,
-                    isUserLocation: true,
-                });
-            })
-            .catch(() => {
-                setGeolocationStatus('denied');
-            });
     }, []);
 
     const setStartPoint = useCallback((point) => {
@@ -76,12 +65,12 @@ export const PointsProvider = ({ children }) => {
     }, [invalidateRoute]);
 
     const addPoint = (point) => {
-        setPoints(prev => [...prev, { ...point, id: Date.now() }]);
+        setPoints((prev) => [...prev, { ...point, id: Date.now() }]);
         invalidateRoute();
     };
 
     const removePoint = (id) => {
-        setPoints(prev => prev.filter(point => point.id !== id));
+        setPoints((prev) => prev.filter((point) => point.id !== id));
         invalidateRoute();
     };
 
@@ -95,14 +84,72 @@ export const PointsProvider = ({ children }) => {
         invalidateRoute();
     };
 
-    const requestRouteBuild = useCallback(() => {
+    const loadRouteSnapshot = useCallback((snapshot) => {
+        setPoints(snapshot.points ?? []);
+        setStartPointState(snapshot.startPoint ?? null);
+        setTransportProfile(snapshot.transportProfile ?? 'car');
+        if (snapshot.startPoint?.isUserLocation) {
+            setGeolocationStatus('granted');
+        }
         invalidateRoute();
-        setRouteBuildToken((token) => token + 1);
     }, [invalidateRoute]);
+
+    const buildRoute = useCallback(async () => {
+        if (points.length < 2) {
+            throw new Error('Добавьте минимум 2 точки маршрута');
+        }
+
+        const currentStart = startPoint
+            ? { id: -1, lat: startPoint.latitude, lon: startPoint.longitude }
+            : null;
+
+        const cacheKey = buildRouteCacheKey(points, transportProfile, currentStart);
+        const pointsForRoute = points.map((point, index) => ({
+            id: point.id ?? index,
+            lat: point.latitude,
+            lon: point.longitude,
+        }));
+
+        setBuildError(null);
+        setIsBuilding(true);
+        setBuildProgress(0);
+        invalidateRoute();
+
+        try {
+            const [, geojson] = await Promise.all([
+                runSimulatedProgress(2000, setBuildProgress),
+                getMap(currentStart, null, pointsForRoute, transportProfile),
+            ]);
+
+            cacheRoute(geojson, cacheKey);
+
+            const snapshot = {
+                id: `h_${Date.now()}`,
+                createdAt: Date.now(),
+                label: formatRouteLabel({ createdAt: Date.now(), points }),
+                startPoint,
+                points: [...points],
+                transportProfile,
+            };
+            saveToHistory(snapshot);
+
+            return geojson;
+        } catch (err) {
+            setBuildError(err.message || 'Не удалось построить маршрут');
+            throw err;
+        } finally {
+            setBuildProgress(100);
+            setTimeout(() => {
+                setIsBuilding(false);
+                setBuildProgress(0);
+            }, 200);
+        }
+    }, [points, startPoint, transportProfile, invalidateRoute, cacheRoute]);
 
     const resetAll = useCallback(async () => {
         setPoints([]);
         invalidateRoute();
+        setBuildError(null);
 
         try {
             const [latitude, longitude] = await getUserPosition();
@@ -143,11 +190,15 @@ export const PointsProvider = ({ children }) => {
             startPoint,
             setStartPoint,
             geolocationStatus,
+            setGeolocationStatus,
             apiStartPoint,
             applyUserLocation,
-            requestRouteBuild,
+            buildRoute,
             resetAll,
-            routeBuildToken,
+            loadRouteSnapshot,
+            isBuilding,
+            buildProgress,
+            buildError,
         }}>
             {children}
         </PointsContext.Provider>

@@ -9,7 +9,7 @@ import './map.scss';
 const DEFAULT_CENTER = [56.840508, 60.650206];
 
 const Map = () => {
-    const { points, transportProfile, startPoint, apiStartPoint } = usePoints();
+    const { points, startPoint } = usePoints();
 
     const mapCenter = useMemo(() => {
         if (startPoint) {
@@ -76,9 +76,6 @@ const Map = () => {
                         ))}
                     </>
                 }
-                routePoints={points}
-                startPoint={apiStartPoint}
-                transportProfile={transportProfile}
             />
         </div>
     );
