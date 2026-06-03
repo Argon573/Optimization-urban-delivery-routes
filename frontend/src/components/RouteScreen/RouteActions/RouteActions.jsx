@@ -37,7 +37,7 @@ const RouteActions = () => {
     return (
         <div className={styles.actions}>
             <button type="button" className={styles.buildButton} onClick={handleBuild} disabled={isBuilding}>
-                построить
+                Построить
             </button>
             <button type="button" className={styles.resetButton} onClick={handleReset}>
                 Сбросить

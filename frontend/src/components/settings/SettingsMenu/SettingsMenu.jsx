@@ -2,9 +2,9 @@ import { IoChevronForward } from 'react-icons/io5';
 import styles from './SettingsMenu.module.scss';
 
 const MENU_ITEMS = [
-    { id: 'favorites', label: 'избранное' },
+    { id: 'favorites', label: 'Избранное' },
     { id: 'history', label: 'История' },
-    { id: 'generation', label: 'генерация точек' },
+    { id: 'generation', label: 'Генерация точек' },
 ];
 
 const SettingsMenu = ({ onSelect }) => (
