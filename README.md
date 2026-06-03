@@ -15,7 +15,7 @@
 | :--- | :--- | :--- |
 | ![Главный](screenshots/mainScreen.jpg) | ![Маршрут](screenshots/RouteScreen.jpg) | ![История](screenshots/History.jpg) |
 
-![Desktop](screenshots/DesktopScreen/jpg)
+![Desktop](screenshots/DesktopScreen/png)
 
 ---
 
