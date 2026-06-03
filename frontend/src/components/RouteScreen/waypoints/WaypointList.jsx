@@ -1,7 +1,7 @@
 import { IoClose } from 'react-icons/io5';
-import styles from './PointForm.module.scss';
+import styles from './WaypointList.module.scss';
 
-const PointList = ({ points, removePoint }) => (
+const WaypointList = ({ points, removePoint }) => (
     <ul className={styles.list}>
         {points.map((point, index) => (
             <li key={point.id} className={styles.pointSection}>
@@ -22,4 +22,4 @@ const PointList = ({ points, removePoint }) => (
     </ul>
 );
 
-export default PointList;
+export default WaypointList;

@@ -1,6 +1,6 @@
 const API_BASE = 'http://194.124.211.6:8000';
 
-export async function getMap(startPoint, endPoint, points, transportProfile = 'car') {
+export async function fetchRouteGeoJson(startPoint, endPoint, points, transportProfile = 'car') {
     const params = new URLSearchParams({ profile: transportProfile });
     const response = await fetch(`${API_BASE}/route/geojson?${params}`, {
         method: 'POST',

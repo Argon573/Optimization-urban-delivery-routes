@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { IoMdCheckmark } from 'react-icons/io';
 import { usePhotonSearch } from '../../../hooks/usePhotonSearch';
-import { getGeocodeFromAddress } from '../../../hooks/getGeocodeFromAddress';
+import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
-import { usePoints } from '../PointsContext';
-import fieldStyles from './StartPointForm.module.scss';
+import { useRoute } from '../../../context/RouteContext';
+import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
 
 const PLACEHOLDER_GRANTED = 'Мое местоположение';
 const PLACEHOLDER_DENIED = 'Введите стартовую точку';
 
 const StartPointForm = () => {
-    const { startPoint, setStartPoint, geolocationStatus, applyUserLocation } = usePoints();
+    const { startPoint, setStartPoint, geolocationStatus, applyUserLocation } = useRoute();
     const [query, setQuery] = useState('');
     const [suggestionsOpen, setSuggestionsOpen] = useState(false);
     const suggestions = usePhotonSearch(query, suggestionsOpen);
@@ -88,7 +88,7 @@ const StartPointForm = () => {
                 return;
             }
 
-            const geocode = await getGeocodeFromAddress({
+            const geocode = await geocodeAddress({
                 street: parts[0],
                 house: parts[1],
             });

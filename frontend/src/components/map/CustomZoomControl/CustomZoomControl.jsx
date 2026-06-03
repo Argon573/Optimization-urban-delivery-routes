@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import styles from './customZoomControl.module.scss';
+import styles from './CustomZoomControl.module.scss';
 
 const ZOOM_IN_ICON = `
   <svg class="${styles.zoomIcon}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

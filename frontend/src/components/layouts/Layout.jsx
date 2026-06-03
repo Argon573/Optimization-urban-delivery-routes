@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Header from './header/Header';
-import Panel from './navigatePanel/Panel';
-import Map from '../YMaps/Map';
+import NavigationBar from './NavigationBar/NavigationBar';
+import RouteMapView from '../map/RouteMapView';
 import layoutStyles from './layout.module.scss';
 
 const Layout = () => {
@@ -21,15 +21,15 @@ const Layout = () => {
                         <Outlet />
                     </div>
 
-                    <Panel variant="desktop" />
+                    <NavigationBar variant="desktop" />
                 </aside>
 
                 <div className={layoutStyles.mapPane}>
-                    <Map />
+                    <RouteMapView />
                 </div>
             </div>
 
-            <Panel variant="mobile" />
+            <NavigationBar variant="mobile" />
         </div>
     );
 };

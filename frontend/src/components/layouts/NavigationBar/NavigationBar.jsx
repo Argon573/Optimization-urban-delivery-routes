@@ -1,10 +1,10 @@
 import { LuMapPin } from 'react-icons/lu';
-import styles from './panel.module.scss';
 import { TbSTurnRight } from 'react-icons/tb';
 import { FiSettings } from 'react-icons/fi';
 import { NavLink } from 'react-router-dom';
+import styles from './NavigationBar.module.scss';
 
-const Panel = ({ variant = 'mobile' }) => {
+const NavigationBar = ({ variant = 'mobile' }) => {
     if (variant === 'desktop') {
         return (
             <nav className={styles.panelDesktop} aria-label="Навигация">
@@ -57,4 +57,4 @@ const Panel = ({ variant = 'mobile' }) => {
     );
 };
 
-export default Panel;
+export default NavigationBar;

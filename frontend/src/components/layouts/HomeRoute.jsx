@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import Map from '../YMaps/Map';
+import RouteMapView from '../map/RouteMapView';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import layoutStyles from './layout.module.scss';
 
@@ -12,7 +12,7 @@ const HomeRoute = () => {
 
     return (
         <div className={layoutStyles.mobileMapPanel}>
-            <Map />
+            <RouteMapView />
         </div>
     );
 };

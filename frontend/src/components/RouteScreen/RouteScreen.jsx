@@ -1,14 +1,14 @@
-import { usePoints } from './PointsContext';
+import { useRoute } from '../../context/RouteContext';
 import layoutStyles from '../layouts/layout.module.scss';
-import styles from "./routescreen.module.scss";
-import PointList from "./PointForm/PointList";
-import PointForm from "./PointForm/PointForm";
-import StartPointForm from "./StartPointForm/StartPointForm";
-import TransportSelect from "./TransportSelect/TransportSelect";
-import RouteActions from "./RouteActions/RouteActions";
+import styles from './RouteScreen.module.scss';
+import WaypointList from './waypoints/WaypointList';
+import WaypointInput from './waypoints/WaypointInput';
+import StartPointForm from './StartPointForm/StartPointForm';
+import TransportSelect from './TransportSelect/TransportSelect';
+import RouteActions from './RouteActions/RouteActions';
 
 const RouteScreen = () => {
-    const { points, addPoint, removePoint, transportProfile, setTransportProfile } = usePoints();
+    const { points, addPoint, removePoint, transportProfile, setTransportProfile } = useRoute();
 
     return (
         <div className={layoutStyles.pagePanel}>
@@ -24,13 +24,13 @@ const RouteScreen = () => {
                     <h3>Точки маршрута</h3>
 
                     {points.length > 0 && (
-                        <PointList
+                        <WaypointList
                             points={points}
                             removePoint={removePoint}
                         />
                     )}
 
-                    <PointForm onSelect={addPoint} />
+                    <WaypointInput onSelect={addPoint} />
                 </div>
 
                 <RouteActions />

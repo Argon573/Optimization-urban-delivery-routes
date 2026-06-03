@@ -6,7 +6,7 @@ import SettingsMenu from './SettingsMenu/SettingsMenu';
 import RouteList from './RouteList/RouteList';
 import GenerationMenu from './generation/GenerationMenu';
 import { useRouteStorage } from '../../hooks/useRouteStorage';
-import { usePoints } from '../RouteScreen/PointsContext';
+import { useRoute } from '../../context/RouteContext';
 
 const TITLES = {
     menu: null,
@@ -20,7 +20,7 @@ const Settings = () => {
     const [generationOpen, setGenerationOpen] = useState(false);
     const navigate = useNavigate();
     const { history, favorites, deleteHistory, moveToFavorites, deleteFavorite, refresh } = useRouteStorage();
-    const { loadRouteSnapshot } = usePoints();
+    const { loadRouteSnapshot } = useRoute();
 
     const handleMenuSelect = (id) => {
         if (id === 'generation') {

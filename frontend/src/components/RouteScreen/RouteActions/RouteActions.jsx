@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePoints } from '../PointsContext';
+import { useRoute } from '../../../context/RouteContext';
 import { useIsDesktop } from '../../../hooks/useIsDesktop';
 import styles from './RouteActions.module.scss';
 
 const RouteActions = () => {
-    const { points, buildRoute, resetAll, isBuilding } = usePoints();
+    const { points, buildRoute, resetAll, isBuilding } = useRoute();
     const navigate = useNavigate();
     const isDesktop = useIsDesktop();
     const [error, setError] = useState('');

@@ -1,15 +1,15 @@
 import React, { useMemo } from 'react';
-import Ymap from './Ymap';
-import { usePoints } from '../RouteScreen/PointsContext';
-import styles from './map.module.scss';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import LeafletMap from './LeafletMap';
+import { useRoute } from '../../context/RouteContext';
+import styles from './map.module.scss';
 import './map.scss';
 
 const DEFAULT_CENTER = [56.840508, 60.650206];
 
-const Map = () => {
-    const { points, startPoint } = usePoints();
+const RouteMapView = () => {
+    const { points, startPoint } = useRoute();
 
     const mapCenter = useMemo(() => {
         if (startPoint) {
@@ -21,7 +21,7 @@ const Map = () => {
         return DEFAULT_CENTER;
     }, [startPoint, points]);
 
-    const customIcon = L.divIcon({
+    const waypointIcon = L.divIcon({
         className: 'custom-marker',
         html: `<svg width="23" height="30" viewBox="0 0 23 30" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path fill-rule="evenodd" clip-rule="evenodd" d="M11.5 0C17.8513 0 23 5.12837 23 11.4545C23 12.2267 22.9233 12.9811 22.7771 13.7104C21.7621 21.329 11.5605 30 11.5605 30C11.5605 30 2.87877 22.6209 0.736307 15.4961C0.260397 14.2393 0 12.8773 0 11.4545C0 5.12837 5.14873 0 11.5 0Z" fill="#6C63FF"/>
@@ -43,42 +43,37 @@ const Map = () => {
 
     return (
         <div className={styles.map}>
-            <Ymap
-                initialCenter={mapCenter}
-                Markers={
-                    <>
-                        {startPoint?.isUserLocation && (
-                            <Marker
-                                position={[startPoint.latitude, startPoint.longitude]}
-                                icon={userIcon}
-                            >
-                                <Popup>Моё местоположение</Popup>
-                            </Marker>
-                        )}
+            <LeafletMap initialCenter={mapCenter}>
+                {startPoint?.isUserLocation && (
+                    <Marker
+                        position={[startPoint.latitude, startPoint.longitude]}
+                        icon={userIcon}
+                    >
+                        <Popup>Моё местоположение</Popup>
+                    </Marker>
+                )}
 
-                        {startPoint && !startPoint.isUserLocation && (
-                            <Marker
-                                position={[startPoint.latitude, startPoint.longitude]}
-                                icon={customIcon}
-                            >
-                                <Popup>{startPoint.address}</Popup>
-                            </Marker>
-                        )}
+                {startPoint && !startPoint.isUserLocation && (
+                    <Marker
+                        position={[startPoint.latitude, startPoint.longitude]}
+                        icon={waypointIcon}
+                    >
+                        <Popup>{startPoint.address}</Popup>
+                    </Marker>
+                )}
 
-                        {points.map((point) => (
-                            <Marker
-                                key={point.id}
-                                position={[point.latitude, point.longitude]}
-                                icon={customIcon}
-                            >
-                                <Popup>{point.address}</Popup>
-                            </Marker>
-                        ))}
-                    </>
-                }
-            />
+                {points.map((point) => (
+                    <Marker
+                        key={point.id}
+                        position={[point.latitude, point.longitude]}
+                        icon={waypointIcon}
+                    >
+                        <Popup>{point.address}</Popup>
+                    </Marker>
+                ))}
+            </LeafletMap>
         </div>
     );
 };
 
-export default Map;
+export default RouteMapView;

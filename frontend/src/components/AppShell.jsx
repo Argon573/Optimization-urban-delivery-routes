@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { usePoints } from './RouteScreen/PointsContext';
+import { useRoute } from '../context/RouteContext';
 import { shouldShowGeoPrompt, setGeoConsent } from '../services/geoConsent';
 import GeoPermissionModal from './modals/GeoPermissionModal';
 import RouteBuildModal from './modals/RouteBuildModal';
@@ -10,7 +10,7 @@ const AppShell = ({ children }) => {
         buildProgress,
         applyUserLocation,
         setGeolocationStatus,
-    } = usePoints();
+    } = useRoute();
 
     const [showGeoPrompt, setShowGeoPrompt] = useState(() => shouldShowGeoPrompt());
 

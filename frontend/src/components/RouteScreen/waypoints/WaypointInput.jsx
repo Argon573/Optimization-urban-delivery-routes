@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { usePhotonSearch } from '../../../hooks/usePhotonSearch';
-import { getGeocodeFromAddress } from '../../../hooks/getGeocodeFromAddress';
+import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { IoMdCheckmark } from 'react-icons/io';
-import fieldStyles from '../StartPointForm/StartPointForm.module.scss';
+import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
 
-const PointForm = ({ onSelect, onSuggestionsOpen }) => {
+const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
     const [query, setQuery] = useState('');
     const suggestions = usePhotonSearch(query);
     const [error, setError] = useState('');
@@ -46,7 +46,7 @@ const PointForm = ({ onSelect, onSuggestionsOpen }) => {
                 return;
             }
 
-            const geocode = await getGeocodeFromAddress({
+            const geocode = await geocodeAddress({
                 street: parts[0],
                 house: parts[1],
             });
@@ -126,4 +126,4 @@ const PointForm = ({ onSelect, onSuggestionsOpen }) => {
     );
 };
 
-export default PointForm;
+export default WaypointInput;

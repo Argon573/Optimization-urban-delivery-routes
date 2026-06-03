@@ -1,19 +1,17 @@
 import React from 'react';
-import { PointsProvider } from './components/RouteScreen/PointsContext';
+import { RouteProvider } from './context/RouteContext';
 import { AppRouter } from './router/AppRouter';
 import AppShell from './components/AppShell';
 import styles from './assets/app.module.scss';
 
-const App = () => {
-  return (
-      <PointsProvider>
+const App = () => (
+    <RouteProvider>
         <AppShell>
-          <div className={styles.app}>
-            <AppRouter />
-          </div>
+            <div className={styles.app}>
+                <AppRouter />
+            </div>
         </AppShell>
-      </PointsProvider>
-  );
-};
+    </RouteProvider>
+);
 
 export default App;

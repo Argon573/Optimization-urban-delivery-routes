@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { usePoints } from '../../RouteScreen/PointsContext';
-import { generatePoints } from '../../../hooks/generatePoints';
+import { useRoute } from '../../../context/RouteContext';
+import { generateRoutePoints } from '../../../api/generateRoutePoints';
 import {
     getValidatedGenerationValues,
     validateGenerationForm,
@@ -12,7 +12,7 @@ import {
 import styles from './generation.module.scss';
 
 const GenerationMenu = () => {
-    const { setGeneratedPoints } = usePoints();
+    const { setGeneratedPoints } = useRoute();
     const [radius, setRadius] = useState('');
     const [pointsCount, setPointsCount] = useState('');
     const [errors, setErrors] = useState({});
@@ -53,7 +53,7 @@ const GenerationMenu = () => {
         setIsLoading(true);
 
         try {
-            const data = await generatePoints({
+            const data = await generateRoutePoints({
                 radiusKm: values.radiusKm,
                 pointsCount: values.pointsCount,
             });

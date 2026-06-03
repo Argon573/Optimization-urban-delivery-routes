@@ -1,26 +1,26 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { getUserPosition } from '../../hooks/getUserPosition';
-import { getMap } from '../../hooks/getMap';
-import { buildRouteCacheKey } from '../../utils/routeCacheKey';
-import { runSimulatedProgress } from '../../utils/simulatedProgress';
-import { saveToHistory, formatRouteLabel } from '../../services/routeStorage';
+import { getUserGeolocation } from '../api/getUserGeolocation';
+import { fetchRouteGeoJson } from '../api/fetchRouteGeoJson';
+import { buildRouteCacheKey } from '../utils/routeCacheKey';
+import { runSimulatedProgress } from '../utils/simulatedProgress';
+import { saveToHistory, formatRouteLabel } from '../services/routeStorage';
 
-const PointsContext = createContext();
+const RouteContext = createContext();
 
 const invalidateRouteCache = (setRouteGeoJson, setRouteCacheKey) => {
     setRouteGeoJson(null);
     setRouteCacheKey(null);
 };
 
-export const usePoints = () => {
-    const context = useContext(PointsContext);
+export const useRoute = () => {
+    const context = useContext(RouteContext);
     if (!context) {
-        throw new Error('usePoints must be used within PointsProvider');
+        throw new Error('useRoute must be used within RouteProvider');
     }
     return context;
 };
 
-export const PointsProvider = ({ children }) => {
+export const RouteProvider = ({ children }) => {
     const [points, setPoints] = useState([]);
     const [routeGeoJson, setRouteGeoJson] = useState(null);
     const [routeCacheKey, setRouteCacheKey] = useState(null);
@@ -47,7 +47,7 @@ export const PointsProvider = ({ children }) => {
 
     const applyUserLocation = useCallback(async () => {
         try {
-            const [latitude, longitude] = await getUserPosition();
+            const [latitude, longitude] = await getUserGeolocation();
             setGeolocationStatus('granted');
             setStartPointState({
                 id: 'start',
@@ -118,7 +118,7 @@ export const PointsProvider = ({ children }) => {
         try {
             const [, geojson] = await Promise.all([
                 runSimulatedProgress(2000, setBuildProgress),
-                getMap(currentStart, null, pointsForRoute, transportProfile),
+                fetchRouteGeoJson(currentStart, null, pointsForRoute, transportProfile),
             ]);
 
             cacheRoute(geojson, cacheKey);
@@ -152,7 +152,7 @@ export const PointsProvider = ({ children }) => {
         setBuildError(null);
 
         try {
-            const [latitude, longitude] = await getUserPosition();
+            const [latitude, longitude] = await getUserGeolocation();
             setGeolocationStatus('granted');
             setStartPointState({
                 id: 'start',
@@ -176,7 +176,7 @@ export const PointsProvider = ({ children }) => {
         : null;
 
     return (
-        <PointsContext.Provider value={{
+        <RouteContext.Provider value={{
             points,
             addPoint,
             removePoint,
@@ -201,6 +201,6 @@ export const PointsProvider = ({ children }) => {
             buildError,
         }}>
             {children}
-        </PointsContext.Provider>
+        </RouteContext.Provider>
     );
 };

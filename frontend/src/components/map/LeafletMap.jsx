@@ -2,10 +2,10 @@ import React from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import './ymap.css';
-import { usePoints } from '../RouteScreen/PointsContext';
-import CustomZoomControl from './custom control/CustomZoomControl';
-import styles from './custom control/customZoomControl.module.scss';
+import './leaflet-overrides.css';
+import { useRoute } from '../../context/RouteContext';
+import CustomZoomControl from './CustomZoomControl/CustomZoomControl';
+import styles from './CustomZoomControl/CustomZoomControl.module.scss';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const RouteGeoJsonLayer = () => {
-    const { routeGeoJson } = usePoints();
+    const { routeGeoJson } = useRoute();
 
     if (!routeGeoJson) {
         return null;
@@ -44,10 +44,10 @@ const RouteGeoJsonLayer = () => {
     );
 };
 
-const Ymap = ({
+const LeafletMap = ({
     initialCenter,
     initialZoom = 13,
-    Markers,
+    children,
 }) => (
     <div className="leaflet" style={{ position: 'absolute', inset: 0 }}>
         <MapContainer
@@ -63,10 +63,10 @@ const Ymap = ({
 
             <CustomZoomControl className={styles.customZoomControl} />
 
-            {Markers}
+            {children}
             <RouteGeoJsonLayer />
         </MapContainer>
     </div>
 );
 
-export default Ymap;
+export default LeafletMap;
