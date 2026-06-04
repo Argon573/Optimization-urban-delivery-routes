@@ -1,20 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { usePhotonSearch } from '../../../hooks/usePhotonSearch';
+import { useDismissOnOutsideClick } from '../../../hooks/useDismissOnOutsideClick';
 import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { IoMdCheckmark } from 'react-icons/io';
 import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
 
-const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
+const WaypointInput = ({ onSelect }) => {
     const [query, setQuery] = useState('');
-    const suggestions = usePhotonSearch(query);
+    const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+    const suggestions = usePhotonSearch(query, suggestionsOpen);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const hasSuggestions = suggestions.length > 0 && !isLoading;
 
-    useEffect(() => {
-        onSuggestionsOpen?.(hasSuggestions);
-    }, [hasSuggestions, onSuggestionsOpen]);
+    const showSuggestions = suggestionsOpen && suggestions.length > 0 && !isLoading;
+
+    const closeSuggestions = useCallback(() => {
+        setSuggestionsOpen(false);
+    }, []);
+
+    const fieldRef = useDismissOnOutsideClick(showSuggestions, closeSuggestions);
 
     const handleSelect = (item) => {
         const fullAddress = `${item.street || ''} ${item.name || ''}, Екатеринбург`;
@@ -27,6 +32,7 @@ const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
 
         setQuery('');
         setError('');
+        setSuggestionsOpen(false);
     };
 
     const handleManualSubmit = async () => {
@@ -35,6 +41,7 @@ const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
             return;
         }
 
+        setSuggestionsOpen(false);
         setIsLoading(true);
         setError('');
 
@@ -79,13 +86,14 @@ const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
     };
 
     return (
-        <div className={fieldStyles.field}>
+        <div ref={fieldRef} className={fieldStyles.field}>
             <div className={`${fieldStyles.inputBox} ${error ? fieldStyles.inputError : ''}`}>
                 <input
                     type="text"
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value);
+                        setSuggestionsOpen(e.target.value.trim().length >= 3);
                         if (error) setError('');
                     }}
                     onKeyDown={handleKeyDown}
@@ -108,7 +116,7 @@ const WaypointInput = ({ onSelect, onSuggestionsOpen }) => {
 
             {error && <div className={fieldStyles.errorMessage}>{error}</div>}
 
-            {hasSuggestions && (
+            {showSuggestions && (
                 <ul className={fieldStyles.autoComplete}>
                     {suggestions.map((item, index) => (
                         <li

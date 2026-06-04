@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { IoMdCheckmark } from 'react-icons/io';
 import { usePhotonSearch } from '../../../hooks/usePhotonSearch';
+import { useDismissOnOutsideClick } from '../../../hooks/useDismissOnOutsideClick';
 import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { useRoute } from '../../../context/RouteContext';
@@ -20,6 +21,14 @@ const StartPointForm = () => {
     const placeholder = geolocationStatus === 'granted'
         ? PLACEHOLDER_GRANTED
         : PLACEHOLDER_DENIED; // idle | denied
+
+    const showSuggestions = suggestionsOpen && suggestions.length > 0 && !isLoading;
+
+    const closeSuggestions = useCallback(() => {
+        setSuggestionsOpen(false);
+    }, []);
+
+    const fieldRef = useDismissOnOutsideClick(showSuggestions, closeSuggestions);
 
     useEffect(() => {
         if (startPoint && !startPoint.isUserLocation) {
@@ -118,7 +127,7 @@ const StartPointForm = () => {
     };
 
     return (
-        <div className={fieldStyles.field}>
+        <div ref={fieldRef} className={fieldStyles.field}>
             <span className={fieldStyles.title}>Отправная точка</span>
 
             <div className={`${fieldStyles.inputBox} ${error ? fieldStyles.inputError : ''}`}>
@@ -129,9 +138,6 @@ const StartPointForm = () => {
                         setQuery(e.target.value);
                         setSuggestionsOpen(e.target.value.trim().length >= 3);
                         if (error) setError('');
-                    }}
-                    onBlur={() => {
-                        setTimeout(() => setSuggestionsOpen(false), 150);
                     }}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
@@ -157,7 +163,7 @@ const StartPointForm = () => {
 
             {error && <div className={fieldStyles.errorMessage}>{error}</div>}
 
-            {suggestionsOpen && suggestions.length > 0 && !isLoading && (
+            {showSuggestions && (
                 <ul className={fieldStyles.autoComplete}>
                     {suggestions.map((item, index) => (
                         <li
