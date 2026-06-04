@@ -1,6 +1,8 @@
+import { API_BASE } from './config';
+
 export async function geocodeAddress(address) {
     try {
-        const response = await fetch('http://localhost:8000/geocode', {
+        const response = await fetch(`${API_BASE}/geocode`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

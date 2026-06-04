@@ -1,4 +1,4 @@
-const API_BASE = 'http://194.124.211.6:8000';
+import { API_BASE } from './config';
 
 export async function fetchRouteGeoJson(startPoint, endPoint, points, transportProfile = 'car') {
     const params = new URLSearchParams({ profile: transportProfile });

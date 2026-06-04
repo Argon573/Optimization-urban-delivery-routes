@@ -52,6 +52,20 @@ npm run dev
 
 ```
 
+`npm run dev` проксирует `/route`, `/geocode`, `/generate` на `http://localhost:8000` (см. `frontend/vite.config.js`).
+
+### Продакшен (HTTPS)
+
+Сайт на HTTPS не может вызывать API по `http://IP:8000` (Mixed Content). Фронтенд по умолчанию ходит на **тот же домен** (`/route/geojson`, `/geocode`, …). На сервере nginx должен проксировать эти пути на бэкенд — пример: [`deploy/nginx-api-proxy.conf.example`](deploy/nginx-api-proxy.conf.example).
+
+Пересборка после деплоя:
+
+```bash
+cd frontend && npm run build && sudo systemctl reload nginx
+```
+
+Опционально: `frontend/.env.production` с `VITE_API_BASE_URL=https://ваш-api-домен` (только HTTPS).
+
 ---
 
 ## 👥 Команда проекта

@@ -16,6 +16,12 @@ export default defineConfig({
     hmr: {
       overlay: true,
     },
+    proxy: {
+      '/route': { target: 'http://localhost:8000', changeOrigin: true },
+      '/geocode': { target: 'http://localhost:8000', changeOrigin: true },
+      '/generate': { target: 'http://localhost:8000', changeOrigin: true },
+      '/health': { target: 'http://localhost:8000', changeOrigin: true },
+    },
   },
   build: {
     outDir: 'build',
