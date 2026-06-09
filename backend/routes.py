@@ -19,6 +19,7 @@ from services import (
     or_opt,
     simulated_annealing,
     optimize_route_advanced,
+    apply_point_priorities,
     prepare_route_points,
 )
 from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates, osrm_profile_for_transport, get_osrm_route_geometry
@@ -26,9 +27,22 @@ from models import Point
 import requests
 import math
 import random
+from functools import lru_cache
+from fastapi.concurrency import run_in_threadpool
 # from map_render import render_route_map  # временно отключено
 
 router = APIRouter()
+
+# Кэширующая функция (синхронная) для Photon (LRU cache)
+@lru_cache(maxsize=256)
+def _fetch_photon_suggestions(q: str, limit: int) -> dict:
+    """Реальный запрос к Photon API с кэшированием."""
+    url = "https://photon.komoot.io/api/"
+    params = {"q": q, "limit": limit}
+    headers = {"User-Agent": "backend-routemapper/1.0"}
+    resp = requests.get(url, params=params, headers=headers, timeout=3)
+    resp.raise_for_status()
+    return resp.json()
 
 @router.get("/address/photon_suggest")
 async def photon_suggest_address(
@@ -38,13 +52,8 @@ async def photon_suggest_address(
     """
     Возвращает список подходящих адресов по подстроке через Photon (OSM).
     """
-    url = "https://photon.komoot.io/api/"
-    params = {"q": q, "limit": limit}
-    headers = {"User-Agent": "backend-routemapper/1.0"}
     try:
-        resp = requests.get(url, params=params, headers=headers, timeout=3)
-        resp.raise_for_status()
-        data = resp.json()
+        data = await run_in_threadpool(_fetch_photon_suggestions, q, limit)
         suggestions = []
         for feature in data.get("features", []):
             prop = feature.get("properties", {})
@@ -158,6 +167,8 @@ async def route_geojson(
         TransportProfile.CAR,
         description="Вид транспорта: car | walking | transit",
     ),
+    use_priorities: bool = Query(False, description="Учитывать приоритеты точек"),
+    priority_strength: float = Query(0.5, ge=0, le=1, description="Сила влияния приоритетов (0-1)"),
 ):
     """Возвращает GeoJSON маршрута, построенного с учётом весов (время или расстояние)."""
     if len(request.points) < 2:
@@ -169,6 +180,14 @@ async def route_geojson(
     # Матрица весов (duration или distance) для оптимизации
     transport_str = osrm_profile_for_transport(profile)
     weight_matrix, weight_source = calculate_weight_matrix(ordered_points, weight_type=optimize_by, transport=transport_str)
+
+    # Применяем приоритеты точек к матрице весов при необходимости
+    if use_priorities:
+        weight_matrix = apply_point_priorities(
+            weight_matrix,
+            ordered_points,
+            priority_strength=priority_strength,
+        )
 
     # Определяем порядок точек
     if mode == "original":
