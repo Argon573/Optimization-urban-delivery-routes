@@ -11,12 +11,6 @@ class Point(BaseModel):
     city: Optional[str] = Field(None, description="Город, если известно")
     street: Optional[str] = Field(None, description="Название улицы (опционально)")
     house: Optional[str] = Field(None, description="Дом (опционально)")
-    priority: Optional[float] = Field(
-        default=1.0,
-        ge=0.1,
-        le=100.0,
-        description="Приоритет точки (1.0 = обычный, >1.0 = важнее, <1.0 = менее важна)"
-    )
 
     model_config = {
         "json_schema_extra": {
@@ -25,7 +19,6 @@ class Point(BaseModel):
                 "city": "Москва",
                 "street": "Тверская ул.",
                 "house": "1",
-                "priority": 1.0,
                 "lat": 55.7558,
                 "lon": 37.6176
             }

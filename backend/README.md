@@ -259,36 +259,6 @@ curl -X POST "http://localhost:8000/route/geojson?mode=optimized&transport=cycli
   }'
 ```
 
-### 4. GeoJSON с учётом приоритетов точек
-
-Пример JSON для проверки приоритетов точек:
-
-```json
-{
-  "start_point": {"lat": 56.8394, "lon": 60.6335},
-  "points": [
-    {"id": 1, "lat": 56.8429, "lon": 60.6524, "priority": 2.0, "name": "Срочный заказ"},
-    {"id": 2, "lat": 56.8359, "lon": 60.6084, "priority": 0.5, "name": "Не срочно"},
-    {"id": 3, "lat": 56.8364, "lon": 60.5975, "priority": 1.0, "name": "Обычный"}
-  ]
-}
-```
-
-Пример curl-запроса с включением приоритетов:
-
-```bash
-curl -X POST "http://localhost:8000/route/geojson?mode=optimized&profile=car&use_priorities=true&priority_strength=0.7" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "start_point": {"lat": 56.8394, "lon": 60.6335},
-    "points": [
-      {"id": 1, "lat": 56.8429, "lon": 60.6524, "priority": 2.0},
-      {"id": 2, "lat": 56.8359, "lon": 60.6084, "priority": 0.5},
-      {"id": 3, "lat": 56.8364, "lon": 60.5975, "priority": 1.0}
-    ]
-  }'
-```
-
 ### 3. Проверка активных пробок (Екатеринбург)
 
 ```bash

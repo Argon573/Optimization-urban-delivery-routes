@@ -85,36 +85,6 @@ def calculate_weight_matrix(
     source = "osrm" if failed_count == 0 else "osrm_partial_fallback"
     return matrix, source
 
-
-def apply_point_priorities(
-    matrix: np.ndarray,
-    points: List[Point],
-    priority_strength: float = 0.5,
-) -> np.ndarray:
-    """
-    Корректирует матрицу весов с учётом приоритетов точек.
-
-    Параметры:
-    - matrix: исходная матрица весов (n x n)
-    - points: список точек с их priority
-    - priority_strength: сила влияния приоритета (0 = без влияния, 1 = максимальное)
-
-    Возвращает:
-    - скорректированную матрицу весов
-    """
-    n = len(points)
-    adjusted = matrix.copy()
-
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                priority = points[j].priority or 1.0
-                # Чем выше priority цели, тем сильнее уменьшаем вес
-                factor = 1.0 / max(priority, 0.1)
-                adjusted[i][j] = matrix[i][j] * (1 - priority_strength) + \
-                                 matrix[i][j] * priority_strength * factor
-    return adjusted
-
 def calculate_route_distance(
     route_order: List[int], 
     distance_matrix: np.ndarray
