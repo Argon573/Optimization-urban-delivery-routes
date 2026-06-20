@@ -5,7 +5,7 @@ import { buildRouteCacheKey } from '../utils/routeCacheKey';
 import { runSimulatedProgress } from '../utils/simulatedProgress';
 import { saveToHistory, formatRouteLabel } from '../services/routeStorage';
 import { POINT_PRIORITIES } from '../constants/pointPriority';
-import { DEFAULT_POINT_NAME } from '../utils/pointName';
+import { resolvePointName } from '../utils/pointName';
 
 const RouteContext = createContext();
 
@@ -72,7 +72,7 @@ export const RouteProvider = ({ children }) => {
         setPoints((prev) => [...prev, {
             ...point,
             id: Date.now(),
-            name: point.name?.trim() || DEFAULT_POINT_NAME,
+            name: resolvePointName(point),
             priority: point.priority ?? POINT_PRIORITIES.NORMAL,
         }]);
         invalidateRoute();
@@ -104,7 +104,7 @@ export const RouteProvider = ({ children }) => {
     const loadRouteSnapshot = useCallback((snapshot) => {
         setPoints((snapshot.points ?? []).map((point) => ({
             ...point,
-            name: point.name?.trim() || DEFAULT_POINT_NAME,
+            name: resolvePointName(point),
             priority: point.priority ?? POINT_PRIORITIES.NORMAL,
         })));
         setStartPointState(snapshot.startPoint ?? null);

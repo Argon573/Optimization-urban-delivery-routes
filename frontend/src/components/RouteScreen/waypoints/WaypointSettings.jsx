@@ -8,14 +8,14 @@ import { useDismissOnOutsideClick } from '../../../hooks/useDismissOnOutsideClic
 import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { PRIORITY_OPTIONS, POINT_PRIORITIES } from '../../../constants/pointPriority';
-import { DEFAULT_POINT_NAME } from '../../../utils/pointName';
+import { resolvePointName } from '../../../utils/pointName';
 import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
 import styles from './WaypointSettings.module.scss';
 
 const WaypointSettings = ({ point, listIndex, onBack }) => {
     const { updatePoint, removePoint, focusOnMap } = useRoute();
     const [priority, setPriority] = useState(point.priority ?? POINT_PRIORITIES.NORMAL);
-    const [name, setName] = useState(point.name?.trim() || DEFAULT_POINT_NAME);
+    const [name, setName] = useState(point.name?.trim() || point.address?.trim() || '');
     const [address, setAddress] = useState(point.address);
     const [latitude, setLatitude] = useState(point.latitude);
     const [longitude, setLongitude] = useState(point.longitude);
@@ -124,7 +124,7 @@ const WaypointSettings = ({ point, listIndex, onBack }) => {
             }
 
             updatePoint(point.id, {
-                name: name.trim() || DEFAULT_POINT_NAME,
+                name: name.trim() || trimmedAddress,
                 address: trimmedAddress,
                 latitude: nextLat,
                 longitude: nextLon,
@@ -173,7 +173,7 @@ const WaypointSettings = ({ point, listIndex, onBack }) => {
                         className={styles.pointNameInput}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder={DEFAULT_POINT_NAME}
+                        placeholder={point.address || 'Название точки'}
                         aria-label="Название точки"
                         disabled={isSaving}
                     />

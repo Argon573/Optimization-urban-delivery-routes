@@ -12,7 +12,9 @@ const NavigationBar = ({ variant = 'mobile' }) => {
                     to="/route"
                     className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
                 >
-                    <TbSTurnRight className={styles.icons} />
+                    <span className={styles.iconWrap} aria-hidden>
+                        <TbSTurnRight className={styles.icons} />
+                    </span>
                     <span>Маршрут</span>
                 </NavLink>
 
@@ -20,7 +22,9 @@ const NavigationBar = ({ variant = 'mobile' }) => {
                     to="/settings"
                     className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
                 >
-                    <FiSettings className={styles.icons} />
+                    <span className={styles.iconWrap} aria-hidden>
+                        <FiSettings className={styles.icons} />
+                    </span>
                     <span>Настройки</span>
                 </NavLink>
             </nav>
@@ -34,7 +38,9 @@ const NavigationBar = ({ variant = 'mobile' }) => {
                 end
                 className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
             >
-                <LuMapPin className={styles.icons} />
+                <span className={styles.iconWrap} aria-hidden>
+                    <LuMapPin className={styles.icons} />
+                </span>
                 <span>Карта</span>
             </NavLink>
 
@@ -42,7 +48,9 @@ const NavigationBar = ({ variant = 'mobile' }) => {
                 to="/route"
                 className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
             >
-                <TbSTurnRight className={styles.icons} />
+                <span className={styles.iconWrap} aria-hidden>
+                    <TbSTurnRight className={styles.icons} />
+                </span>
                 <span>Маршрут</span>
             </NavLink>
 
@@ -50,7 +58,9 @@ const NavigationBar = ({ variant = 'mobile' }) => {
                 to="/settings"
                 className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
             >
-                <FiSettings className={styles.icons} />
+                <span className={styles.iconWrap} aria-hidden>
+                    <FiSettings className={styles.icons} />
+                </span>
                 <span>Настройки</span>
             </NavLink>
         </nav>
