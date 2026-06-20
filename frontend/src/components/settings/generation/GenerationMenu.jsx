@@ -60,9 +60,11 @@ const GenerationMenu = () => {
 
             const mapped = data.points.map((point, index) => ({
                 id: point.id ?? Date.now() + index,
+                name: `Точка ${index + 1}`,
                 address: `Сгенерированная точка ${index + 1}`,
                 latitude: point.lat,
                 longitude: point.lon,
+                priority: 'normal',
             }));
 
             setGeneratedPoints(mapped);

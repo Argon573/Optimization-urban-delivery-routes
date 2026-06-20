@@ -176,28 +176,32 @@ async def route_geojson(
     elif mode == "nn":
         route_indices = nearest_neighbor_route(
             ordered_points, weight_matrix,
-            start_index=start_index or 0, 
-            end_index=end_index
+            start_index=start_index or 0,
+            end_index=end_index,
         )
     else:  # optimized
         nn_route_indices = nearest_neighbor_route(
             ordered_points, weight_matrix,
-            start_index=start_index or 0, 
-            end_index=end_index
+            start_index=start_index or 0,
+            end_index=end_index,
         )
+        fixed_start = start_index is not None
+        fixed_end = end_index is not None
         if use_advanced:
             route_indices = optimize_route_advanced(
                 nn_route_indices, weight_matrix,
                 use_or_opt=True,
                 use_simulated_annealing=use_annealing,
-                fixed_start=(start_index is not None),
-                fixed_end=(end_index is not None),
+                fixed_start=fixed_start,
+                fixed_end=fixed_end,
+                points=ordered_points,
             )
         else:
             route_indices = two_opt(
                 nn_route_indices, weight_matrix,
-                fixed_start=(start_index is not None),
-                fixed_end=(end_index is not None)
+                fixed_start=fixed_start,
+                fixed_end=fixed_end,
+                points=ordered_points,
             )
 
     # Координаты точек в нужном порядке
@@ -216,6 +220,31 @@ async def route_geojson(
 
     # Формируем GeoJSON
     def route_to_geojson(route_coords, geometry, geometry_source):
+        point_features = []
+        visit_order = 0
+
+        for seq_idx, point_idx in enumerate(route_indices):
+            pt = ordered_points[point_idx]
+            lon, lat = route_coords[seq_idx]
+            is_start = start_index is not None and point_idx == start_index
+
+            props = {
+                "order": seq_idx,
+                "id": pt.id,
+                "priority": pt.priority.value if hasattr(pt.priority, "value") else pt.priority,
+                "is_start": is_start,
+            }
+
+            if not is_start:
+                visit_order += 1
+                props["visit_order"] = visit_order
+
+            point_features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                "properties": props,
+            })
+
         return {
             "type": "FeatureCollection",
             "features": [
@@ -230,13 +259,7 @@ async def route_geojson(
                         "geometry_source": geometry_source,
                     }
                 },
-                *[
-                    {
-                        "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
-                        "properties": {"order": idx}
-                    } for idx, (lon, lat) in enumerate(route_coords)
-                ]
+                *point_features,
             ]
         }
     import json
@@ -301,15 +324,22 @@ async def optimize_route(
     # Исходный порядок (для сравнения)
     original_order_ids = [p.id for p in ordered_points]
     original_route_indices = list(range(len(ordered_points)))
-    original_weight = calculate_route_distance(original_route_indices, weight_matrix)
+    original_weight = calculate_route_distance(
+        original_route_indices, weight_matrix, ordered_points,
+        fixed_start=(start_index is not None),
+        fixed_end=(end_index is not None),
+    )
 
     # Nearest Neighbor
     nn_route_indices = nearest_neighbor_route(
-        ordered_points, weight_matrix, 
-        start_index=start_index or 0, 
-        end_index=end_index
+        ordered_points, weight_matrix,
+        start_index=start_index or 0,
+        end_index=end_index,
     )
-    
+
+    fixed_start = start_index is not None
+    fixed_end = end_index is not None
+
     # Продвинутая оптимизация
     if use_advanced:
         optimized_route_indices = optimize_route_advanced(
@@ -317,21 +347,27 @@ async def optimize_route(
             weight_matrix,
             use_or_opt=True,
             use_simulated_annealing=use_annealing,
-            fixed_start=(start_index is not None),
-            fixed_end=(end_index is not None),
+            fixed_start=fixed_start,
+            fixed_end=fixed_end,
+            points=ordered_points,
         )
         algorithm = "NN + 2-opt + Or-opt"
         if use_annealing:
             algorithm += " + Simulated Annealing"
     else:
         optimized_route_indices = two_opt(
-            nn_route_indices, weight_matrix, 
-            fixed_start=(start_index is not None), 
-            fixed_end=(end_index is not None)
+            nn_route_indices, weight_matrix,
+            fixed_start=fixed_start,
+            fixed_end=fixed_end,
+            points=ordered_points,
         )
         algorithm = "Nearest Neighbor + 2-opt"
 
-    optimized_weight = calculate_route_distance(optimized_route_indices, weight_matrix)
+    optimized_weight = calculate_route_distance(
+        optimized_route_indices, weight_matrix, ordered_points,
+        fixed_start=fixed_start,
+        fixed_end=fixed_end,
+    )
     improvement = ((original_weight - optimized_weight) / original_weight) * 100 if original_weight > 0 else 0.0
 
     optimized_order_ids = [ordered_points[i].id for i in optimized_route_indices]

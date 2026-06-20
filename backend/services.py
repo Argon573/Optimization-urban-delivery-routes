@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import random
 import math
-from models import Point, DistanceMethod, RouteRequest, TransportProfile
+from models import Point, DistanceMethod, RouteRequest, TransportProfile, PointPriority
 from utils import (
     haversine_distance,
     haversine_distance_vectorized,
@@ -85,14 +85,78 @@ def calculate_weight_matrix(
     source = "osrm" if failed_count == 0 else "osrm_partial_fallback"
     return matrix, source
 
+PRIORITY_WEIGHTS = {
+    PointPriority.NORMAL: 0.0,
+    PointPriority.HIGH: 1.0,
+    PointPriority.URGENT: 3.0,
+}
+
+# Штраф за позднее посещение (в тех же единицах, что и матрица весов — секунды или метры)
+PRIORITY_PENALTY_SCALE = 180.0
+
+
+def _point_priority_weight(point: Point) -> float:
+    priority = point.priority
+    if isinstance(priority, str):
+        try:
+            priority = PointPriority(priority)
+        except ValueError:
+            priority = PointPriority.NORMAL
+    return PRIORITY_WEIGHTS.get(priority, 0.0)
+
+
+def calculate_priority_penalty(
+    route_order: List[int],
+    points: List[Point],
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+) -> float:
+    penalty = 0.0
+    n = len(route_order)
+
+    for position, point_idx in enumerate(route_order):
+        if fixed_start and position == 0:
+            continue
+        if fixed_end and position == n - 1:
+            continue
+
+        weight = _point_priority_weight(points[point_idx])
+        if weight > 0:
+            penalty += weight * position * PRIORITY_PENALTY_SCALE
+
+    return penalty
+
+
 def calculate_route_distance(
-    route_order: List[int], 
-    distance_matrix: np.ndarray
-    ) -> float:
+    route_order: List[int],
+    distance_matrix: np.ndarray,
+    points: Optional[List[Point]] = None,
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+) -> float:
     total = 0.0
     for k in range(len(route_order) - 1):
         total += distance_matrix[route_order[k]][route_order[k + 1]]
+
+    if points:
+        total += calculate_priority_penalty(route_order, points, fixed_start, fixed_end)
+
     return total
+
+
+def _step_selection_cost(
+    current_idx: int,
+    next_idx: int,
+    position: int,
+    distance_matrix: np.ndarray,
+    points: Optional[List[Point]] = None,
+) -> float:
+    travel = distance_matrix[current_idx][next_idx]
+    if not points:
+        return travel
+
+    weight = _point_priority_weight(points[next_idx])
+    return travel + weight * position * PRIORITY_PENALTY_SCALE
 
 
 def nearest_neighbor_route(
@@ -116,7 +180,11 @@ def nearest_neighbor_route(
 
     while remaining:
         current = route[-1]
-        next_point = min(remaining, key=lambda i: distance_matrix[current][i])
+        position = len(route)
+        next_point = min(
+            remaining,
+            key=lambda i: _step_selection_cost(current, i, position, distance_matrix, points),
+        )
         route.append(next_point)
         remaining.remove(next_point)
 
@@ -127,15 +195,16 @@ def nearest_neighbor_route(
 
 
 def two_opt(
-    route: List[int], 
-    distance_matrix: np.ndarray, 
-    fixed_start: bool = False, 
-    fixed_end: bool = False, 
-    max_iterations: int = 100
-    ) -> List[int]:
-    """Оптимизация маршрута методом 2-opt с расчетом только измененных ребер."""
+    route: List[int],
+    distance_matrix: np.ndarray,
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+    max_iterations: int = 100,
+    points: Optional[List[Point]] = None,
+) -> List[int]:
+    """Оптимизация маршрута методом 2-opt с учётом приоритетов точек."""
     best = route.copy()
-    best_distance = calculate_route_distance(best, distance_matrix)
+    best_distance = calculate_route_distance(best, distance_matrix, points, fixed_start, fixed_end)
     improved = True
     iterations = 0
 
@@ -148,13 +217,14 @@ def two_opt(
                 if j - i == 1:
                     continue
 
-                # Расчет только измененных ребер вместо полного маршрута
-                old_cost = distance_matrix[best[i-1]][best[i]] + distance_matrix[best[j]][best[j+1]] if j+1 < len(best) else distance_matrix[best[j]][best[0]]
-                new_cost = distance_matrix[best[i-1]][best[j]] + distance_matrix[best[i]][best[j+1]] if j+1 < len(best) else distance_matrix[best[i]][best[0]]
-                
-                if new_cost < old_cost:
-                    best = best[:i] + best[i:j+1][::-1] + best[j+1:]
-                    best_distance -= old_cost - new_cost
+                candidate = best[:i] + best[i:j + 1][::-1] + best[j + 1:]
+                candidate_distance = calculate_route_distance(
+                    candidate, distance_matrix, points, fixed_start, fixed_end,
+                )
+
+                if candidate_distance < best_distance:
+                    best = candidate
+                    best_distance = candidate_distance
                     improved = True
 
     return best
@@ -226,12 +296,13 @@ def prepare_route_points(
 
 
 def or_opt(
-    route: List[int], 
-    distance_matrix: np.ndarray, 
-    segment_size: int = 3, 
-    fixed_start: bool = False, 
-    fixed_end: bool = False
-    ) -> List[int]:
+    route: List[int],
+    distance_matrix: np.ndarray,
+    segment_size: int = 3,
+    fixed_start: bool = False,
+    fixed_end: bool = False,
+    points: Optional[List[Point]] = None,
+) -> List[int]:
     """Or-opt: перемещение сегмента из 1-3 точек в другую позицию маршрута.
     Дает более качественные маршруты чем 2-opt."""
     best = route.copy()
@@ -250,7 +321,9 @@ def or_opt(
                 for j in range(1 if fixed_start else 0, len(remaining) - (1 if fixed_end else 0) + 1):
                     new_route = remaining[:j] + segment + remaining[j:]
                     
-                    if calculate_route_distance(new_route, distance_matrix) < calculate_route_distance(best, distance_matrix):
+                    if calculate_route_distance(
+                        new_route, distance_matrix, points, fixed_start, fixed_end,
+                    ) < calculate_route_distance(best, distance_matrix, points, fixed_start, fixed_end):
                         best = new_route
                         improved = True
                         break
@@ -272,11 +345,12 @@ def simulated_annealing(
     max_iterations: int = 5000,
     fixed_start: bool = False,
     fixed_end: bool = False,
+    points: Optional[List[Point]] = None,
 ) -> List[int]:
     """Имитация отжига для выхода из локальных оптимумов.
     Может находить лучшие решения чем 2-opt в сложных случаях."""
     current = route.copy()
-    current_distance = calculate_route_distance(current, distance_matrix)
+    current_distance = calculate_route_distance(current, distance_matrix, points, fixed_start, fixed_end)
     best = current.copy()
     best_distance = current_distance
     
@@ -296,7 +370,9 @@ def simulated_annealing(
         
         # Разворачиваем сегмент
         new_route[i:j+1] = new_route[i:j+1][::-1]
-        new_distance = calculate_route_distance(new_route, distance_matrix)
+        new_distance = calculate_route_distance(
+            new_route, distance_matrix, points, fixed_start, fixed_end,
+        )
         
         # Вероятность принятия хорошего или среднего решения
         delta = new_distance - current_distance
@@ -326,16 +402,17 @@ def optimize_route_advanced(
     use_simulated_annealing: bool = False,
     fixed_start: bool = False,
     fixed_end: bool = False,
+    points: Optional[List[Point]] = None,
 ) -> List[int]:
     """Комбинированная оптимизация: 2-opt + Or-opt + опционально имитация отжига."""
-    # Начинаем с 2-opt
-    route = two_opt(route, distance_matrix, fixed_start, fixed_end)
-    
-    # Затем Or-opt для улучшения качества
+    route = two_opt(route, distance_matrix, fixed_start, fixed_end, points=points)
+
     if use_or_opt:
-        route = or_opt(route, distance_matrix, segment_size=3, fixed_start=fixed_start, fixed_end=fixed_end)
-    
-    # И наконец имитация отжига если нужна (для сложных случаев)
+        route = or_opt(
+            route, distance_matrix, segment_size=3,
+            fixed_start=fixed_start, fixed_end=fixed_end, points=points,
+        )
+
     if use_simulated_annealing:
         route = simulated_annealing(
             route,
@@ -345,6 +422,7 @@ def optimize_route_advanced(
             max_iterations=2000,
             fixed_start=fixed_start,
             fixed_end=fixed_end,
+            points=points,
         )
-    
+
     return route

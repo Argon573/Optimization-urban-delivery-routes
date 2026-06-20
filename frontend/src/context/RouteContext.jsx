@@ -4,6 +4,8 @@ import { fetchRouteGeoJson } from '../api/fetchRouteGeoJson';
 import { buildRouteCacheKey } from '../utils/routeCacheKey';
 import { runSimulatedProgress } from '../utils/simulatedProgress';
 import { saveToHistory, formatRouteLabel } from '../services/routeStorage';
+import { POINT_PRIORITIES } from '../constants/pointPriority';
+import { DEFAULT_POINT_NAME } from '../utils/pointName';
 
 const RouteContext = createContext();
 
@@ -30,6 +32,8 @@ export const RouteProvider = ({ children }) => {
     const [isBuilding, setIsBuilding] = useState(false);
     const [buildProgress, setBuildProgress] = useState(0);
     const [buildError, setBuildError] = useState(null);
+    const [mapFocus, setMapFocus] = useState(null);
+    const [selectedPointId, setSelectedPointId] = useState(null);
 
     const invalidateRoute = useCallback(() => {
         invalidateRouteCache(setRouteGeoJson, setRouteCacheKey);
@@ -65,9 +69,21 @@ export const RouteProvider = ({ children }) => {
     }, [invalidateRoute]);
 
     const addPoint = (point) => {
-        setPoints((prev) => [...prev, { ...point, id: Date.now() }]);
+        setPoints((prev) => [...prev, {
+            ...point,
+            id: Date.now(),
+            name: point.name?.trim() || DEFAULT_POINT_NAME,
+            priority: point.priority ?? POINT_PRIORITIES.NORMAL,
+        }]);
         invalidateRoute();
     };
+
+    const updatePoint = useCallback((id, updates) => {
+        setPoints((prev) => prev.map((point) => (
+            point.id === id ? { ...point, ...updates } : point
+        )));
+        invalidateRoute();
+    }, [invalidateRoute]);
 
     const removePoint = (id) => {
         setPoints((prev) => prev.filter((point) => point.id !== id));
@@ -75,7 +91,8 @@ export const RouteProvider = ({ children }) => {
     };
 
     const updateTransportProfile = (profile) => {
-        setTransportProfile(profile);
+        const normalized = profile === 'transit' ? 'car' : profile;
+        setTransportProfile(normalized);
         invalidateRoute();
     };
 
@@ -85,9 +102,15 @@ export const RouteProvider = ({ children }) => {
     };
 
     const loadRouteSnapshot = useCallback((snapshot) => {
-        setPoints(snapshot.points ?? []);
+        setPoints((snapshot.points ?? []).map((point) => ({
+            ...point,
+            name: point.name?.trim() || DEFAULT_POINT_NAME,
+            priority: point.priority ?? POINT_PRIORITIES.NORMAL,
+        })));
         setStartPointState(snapshot.startPoint ?? null);
-        setTransportProfile(snapshot.transportProfile ?? 'car');
+        setTransportProfile(
+            snapshot.transportProfile === 'transit' ? 'car' : (snapshot.transportProfile ?? 'car'),
+        );
         if (snapshot.startPoint?.isUserLocation) {
             setGeolocationStatus('granted');
         }
@@ -108,6 +131,7 @@ export const RouteProvider = ({ children }) => {
             id: point.id ?? index,
             lat: point.latitude,
             lon: point.longitude,
+            priority: point.priority ?? POINT_PRIORITIES.NORMAL,
         }));
 
         setBuildError(null);
@@ -167,6 +191,18 @@ export const RouteProvider = ({ children }) => {
         }
     }, [invalidateRoute]);
 
+    const focusOnMap = useCallback((latitude, longitude) => {
+        setMapFocus({ latitude, longitude, nonce: Date.now() });
+    }, []);
+
+    const openPointSettings = useCallback((id) => {
+        setSelectedPointId(id);
+    }, []);
+
+    const closePointSettings = useCallback(() => {
+        setSelectedPointId(null);
+    }, []);
+
     const apiStartPoint = startPoint
         ? {
             id: -1,
@@ -179,6 +215,7 @@ export const RouteProvider = ({ children }) => {
         <RouteContext.Provider value={{
             points,
             addPoint,
+            updatePoint,
             removePoint,
             routeGeoJson,
             routeCacheKey,
@@ -199,6 +236,11 @@ export const RouteProvider = ({ children }) => {
             isBuilding,
             buildProgress,
             buildError,
+            mapFocus,
+            focusOnMap,
+            selectedPointId,
+            openPointSettings,
+            closePointSettings,
         }}>
             {children}
         </RouteContext.Provider>

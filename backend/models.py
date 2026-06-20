@@ -3,6 +3,12 @@ from typing import List, Optional
 from enum import Enum
 
 
+class PointPriority(str, Enum):
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
 class Point(BaseModel):
     """Модель точки на карте"""
     id: Optional[int] = None
@@ -11,6 +17,10 @@ class Point(BaseModel):
     city: Optional[str] = Field(None, description="Город, если известно")
     street: Optional[str] = Field(None, description="Название улицы (опционально)")
     house: Optional[str] = Field(None, description="Дом (опционально)")
+    priority: PointPriority = Field(
+        PointPriority.NORMAL,
+        description="Приоритет посещения: normal | high | urgent",
+    )
 
     model_config = {
         "json_schema_extra": {

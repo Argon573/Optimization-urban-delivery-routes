@@ -3,7 +3,6 @@ import styles from './TransportSelect.module.scss';
 
 export const TRANSPORT_OPTIONS = [
     { value: 'car', label: 'Автомобиль' },
-    { value: 'transit', label: 'Общественный транспорт' },
     { value: 'walking', label: 'Пеший маршрут' },
 ];
 

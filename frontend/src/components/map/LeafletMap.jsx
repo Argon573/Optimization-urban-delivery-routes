@@ -53,6 +53,7 @@ const LeafletMap = ({
         <MapContainer
             center={initialCenter}
             zoom={initialZoom}
+            doubleClickZoom={false}
             className="leaflet-container"
             style={{ width: '100%', height: '100%' }}
         >
