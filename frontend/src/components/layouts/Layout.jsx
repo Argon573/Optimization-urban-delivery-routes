@@ -2,11 +2,13 @@ import { Outlet } from 'react-router-dom';
 import Header from './header/Header';
 import NavigationBar from './NavigationBar/NavigationBar';
 import RouteMapView from '../map/RouteMapView';
+import YandexMetrikaTracker from '../../analytics/YandexMetrikaTracker';
 import layoutStyles from './layout.module.scss';
 
 const Layout = () => {
     return (
         <div className={layoutStyles.layout}>
+            <YandexMetrikaTracker />
             <div className={layoutStyles.mobileHeader}>
                 <Header />
             </div>
