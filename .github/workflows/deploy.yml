@@ -33,6 +33,10 @@ jobs:
             cd frontend
             npm install
             npm run build
-            
+
+            # Проверка бэкенда
+            sleep 5
+            curl -sf http://127.0.0.1:8000/health || (echo "Backend health check failed" && exit 1)
+
             # Перезапуск nginx
-            sudo systemctl restart nginx
+            sudo nginx -t && sudo systemctl reload nginx

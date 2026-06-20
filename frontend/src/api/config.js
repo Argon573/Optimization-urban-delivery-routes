@@ -1,8 +1,13 @@
+import { SITE_URL } from '../constants/site';
+
 /**
- * Базовый URL API. По умолчанию пустая строка — запросы на тот же origin (HTTPS),
- * nginx проксирует /route, /geocode, /generate на бэкенд :8000.
- * Для локальной разработки без прокси: VITE_API_BASE_URL=http://localhost:8000
+ * Базовый URL API.
+ * Production (на optimization-urban.ru): пустая строка → запросы на тот же origin (/route, /geocode, …).
+ * Development: пустая строка → Vite proxy на localhost:8000.
+ * Переопределение: VITE_API_BASE_URL в .env
  */
 const raw = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export const API_BASE = raw.replace(/\/$/, '');
+
+export { SITE_URL };

@@ -1,0 +1,85 @@
+# Полный конфиг nginx для https://optimization-urban.ru
+# Скопировать: sudo cp deploy/nginx-optimization-urban.conf.example /etc/nginx/sites-available/optimization-urban.ru
+# sudo ln -sf /etc/nginx/sites-available/optimization-urban.ru /etc/nginx/sites-enabled/
+# sudo nginx -t && sudo systemctl reload nginx
+#
+# Пути и SSL-сертификаты подставьте под свой сервер (certbot: /etc/letsencrypt/live/optimization-urban.ru/)
+
+server {
+    listen 80;
+    server_name optimization-urban.ru www.optimization-urban.ru;
+    return 301 https://optimization-urban.ru$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name optimization-urban.ru;
+
+    # SSL (Let's Encrypt)
+    ssl_certificate     /etc/letsencrypt/live/optimization-urban.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/optimization-urban.ru/privkey.pem;
+
+    # Сборка фронтенда (путь после deploy)
+    root /home/developer/delivery-optimizer/frontend/build;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    # API → FastAPI (docker compose, порт 8000)
+    location /route/ {
+        proxy_pass http://127.0.0.1:8000/route/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location = /geocode {
+        proxy_pass http://127.0.0.1:8000/geocode;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /generate {
+        proxy_pass http://127.0.0.1:8000/generate;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location = /health {
+        proxy_pass http://127.0.0.1:8000/health;
+    }
+
+    # Статика Vite
+    location /assets/ {
+        try_files $uri =404;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA: React Router (/route, /settings, …)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# www → без www
+server {
+    listen 443 ssl http2;
+    server_name www.optimization-urban.ru;
+
+    ssl_certificate     /etc/letsencrypt/live/optimization-urban.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/optimization-urban.ru/privkey.pem;
+
+    return 301 https://optimization-urban.ru$request_uri;
+}
