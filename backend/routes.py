@@ -1,6 +1,11 @@
-from fastapi import Query as FastAPIQuery
-from fastapi import APIRouter, HTTPException, Query
+import json
+import math
+import random
+
+import requests
+from fastapi import APIRouter, HTTPException, Query, Query as FastAPIQuery
 from fastapi.responses import Response
+
 from models import (
     GenerateRequest,
     GenerateResponse,
@@ -9,6 +14,7 @@ from models import (
     OptimizedRouteResponse,
     AddressRequest,
     TransportProfile,
+    Point,
 )
 from services import (
     calculate_distance_matrix,
@@ -16,52 +22,21 @@ from services import (
     calculate_route_distance,
     nearest_neighbor_route,
     two_opt,
-    or_opt,
-    simulated_annealing,
     optimize_route_advanced,
     prepare_route_points,
 )
-from utils import get_osrm_distance_wrapper, resolve_points_with_coordinates, osrm_profile_for_transport, get_osrm_route_geometry
-from models import Point
-import requests
-import math
-import random
-# from map_render import render_route_map  # временно отключено
+from utils import (
+    get_osrm_distance_wrapper,
+    resolve_points_with_coordinates,
+    osrm_profile_for_transport,
+    get_osrm_route_geometry,
+    geocode_address,
+)
+from traffic.traffic_generator import generate_traffic_csv, get_current_speed
+from traffic.traffic_patterns import STREETS
 
 router = APIRouter()
 
-@router.get("/address/photon_suggest")
-async def photon_suggest_address(
-    q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
-    limit: int = FastAPIQuery(5, description="Максимум результатов")
-):
-    """
-    Возвращает список подходящих адресов по подстроке через Photon (OSM).
-    """
-    url = "https://photon.komoot.io/api/"
-    params = {"q": q, "limit": limit}
-    headers = {"User-Agent": "backend-routemapper/1.0"}
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=3)
-        resp.raise_for_status()
-        data = resp.json()
-        suggestions = []
-        for feature in data.get("features", []):
-            prop = feature.get("properties", {})
-            suggestions.append({
-                "name": prop.get("name"),
-                "street": prop.get("street"),
-                "city": prop.get("city"),
-                "country": prop.get("country"),
-                "postcode": prop.get("postcode"),
-                "osm_value": prop.get("osm_value"),
-                "lat": feature.get("geometry", {}).get("coordinates", [None, None])[1],
-                "lon": feature.get("geometry", {}).get("coordinates", [None, None])[0],
-                "full": prop.get("label")
-            })
-        return {"suggestions": suggestions}
-    except Exception as e:
-        return {"suggestions": [], "error": str(e)}
 
 @router.get("/")
 async def root():
@@ -77,6 +52,8 @@ async def root():
             "/geocode - получить координаты по адресу",
             "/health - проверка статуса",
             "/address/photon_suggest - автокомплит адресов через Photon (рекомендуется)",
+            "/traffic/update - обновить traffic.csv по текущему времени",
+            "/traffic/status - текущие скорости на улицах",
         ],
     }
 
@@ -93,23 +70,57 @@ async def health_check():
     }
 
 
+@router.get("/address/photon_suggest")
+async def photon_suggest_address(
+    q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
+    city: str = FastAPIQuery(None, description="Город для фильтрации результатов"),
+    limit: int = FastAPIQuery(5, description="Максимум результатов"),
+):
+    url = "https://photon.komoot.io/api/"
+    params = {"q": q, "limit": limit * 3, "lang": "ru"}
+    headers = {"User-Agent": "backend-routemapper/1.0"}
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=3)
+        resp.raise_for_status()
+        data = resp.json()
+        suggestions = []
+        city_lower = city.strip().lower() if city else None
+        for feature in data.get("features", []):
+            prop = feature.get("properties", {})
+            result_city = (prop.get("city") or prop.get("town") or prop.get("village") or "").lower()
+            if city_lower and result_city and city_lower != result_city and city_lower not in result_city:
+                continue
+            coords = feature.get("geometry", {}).get("coordinates", [None, None])
+            suggestions.append({
+                "name": prop.get("name"),
+                "street": prop.get("street"),
+                "city": prop.get("city"),
+                "country": prop.get("country"),
+                "postcode": prop.get("postcode"),
+                "osm_value": prop.get("osm_value"),
+                "housenumber": prop.get("housenumber"),
+                "lat": coords[1],
+                "lon": coords[0],
+                "full": prop.get("label"),
+            })
+            if len(suggestions) >= limit:
+                break
+        return {"suggestions": suggestions}
+    except Exception as e:
+        return {"suggestions": [], "error": str(e)}
+
+
 @router.post("/geocode")
 async def geocode(request: AddressRequest):
-    from utils import geocode_address
-
     coords = geocode_address(request.city, request.street, request.house)
     if coords is None:
         raise HTTPException(status_code=404, detail="Не удалось найти координаты по указанному адресу")
-
     lat, lon = coords
     return {"city": request.city, "street": request.street, "house": request.house, "lat": lat, "lon": lon}
 
 
-
-# Проверка существования адреса (отдельный эндпоинт)
 @router.post("/address/validate")
 async def validate_address(request: AddressRequest):
-    from utils import geocode_address
     coords = geocode_address(request.city, request.street, request.house)
     if coords is None:
         return {"valid": False, "message": "Адрес не найден"}
@@ -117,7 +128,6 @@ async def validate_address(request: AddressRequest):
     return {"valid": True, "lat": lat, "lon": lon}
 
 
-# Генерация точек с проверкой существования адреса (если заданы city/street)
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_points(request: GenerateRequest):
     points = []
@@ -131,7 +141,6 @@ async def generate_points(request: GenerateRequest):
         lon = center.lon + r * math.sin(angle)
         points.append(Point(id=i, lat=lat, lon=lon))
 
-    # Проверка существования адресов для точек, если заданы city/street
     try:
         resolve_points_with_coordinates(points)
     except HTTPException as e:
@@ -145,131 +154,115 @@ async def generate_points(request: GenerateRequest):
     )
 
 
-# Эндпоинт: geojson маршрут с поддержкой оптимизации и различного транспорта
+def _build_geojson(route_indices, ordered_points, route_coords, geometry, geometry_source, optimize_by, weight_source, transport_str):
+    point_features = []
+    visit_order = 0
+
+    for seq_idx, point_idx in enumerate(route_indices):
+        pt = ordered_points[point_idx]
+        lon, lat = route_coords[seq_idx]
+        is_start = (seq_idx == 0)
+
+        props = {
+            "order": seq_idx,
+            "id": pt.id,
+            "priority": pt.priority.value if hasattr(pt.priority, "value") else pt.priority,
+            "is_start": is_start,
+        }
+        if not is_start:
+            visit_order += 1
+            props["visit_order"] = visit_order
+
+        point_features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            "properties": props,
+        })
+
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "LineString", "coordinates": geometry},
+                "properties": {
+                    "name": "route",
+                    "optimize_by": optimize_by,
+                    "matrix_source": weight_source,
+                    "profile": transport_str,
+                    "geometry_source": geometry_source,
+                },
+            },
+            *point_features,
+        ],
+    }
+
 
 @router.post("/route/geojson")
 async def route_geojson(
     request: RouteRequest,
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
-    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
-    optimize_by: str = Query("duration", description="Метрика оптимизации: duration | distance"),
-    profile: TransportProfile = Query(
-        TransportProfile.CAR,
-        description="Вид транспорта: car | walking | transit",
-    ),
+    use_annealing: bool = Query(False, description="Имитация отжига для сложных случаев"),
+    optimize_by: str = Query("duration", description="Метрика: duration | distance"),
+    profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
 ):
-    """Возвращает GeoJSON маршрута, построенного с учётом весов (время или расстояние)."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки")
 
     ordered_points, _, start_index, end_index = prepare_route_points(request)
-    distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
-
-    # Матрица весов (duration или distance) для оптимизации
     transport_str = osrm_profile_for_transport(profile)
     weight_matrix, weight_source = calculate_weight_matrix(ordered_points, weight_type=optimize_by, transport=transport_str)
 
-    # Определяем порядок точек
     if mode == "original":
         route_indices = list(range(len(ordered_points)))
     elif mode == "nn":
         route_indices = nearest_neighbor_route(
             ordered_points, weight_matrix,
-            start_index=start_index or 0,
-            end_index=end_index,
+            start_index=start_index or 0, end_index=end_index,
         )
-    else:  # optimized
+    else:
         nn_route_indices = nearest_neighbor_route(
             ordered_points, weight_matrix,
-            start_index=start_index or 0,
-            end_index=end_index,
+            start_index=start_index or 0, end_index=end_index,
         )
         fixed_start = start_index is not None
         fixed_end = end_index is not None
         if use_advanced:
             route_indices = optimize_route_advanced(
                 nn_route_indices, weight_matrix,
-                use_or_opt=True,
-                use_simulated_annealing=use_annealing,
-                fixed_start=fixed_start,
-                fixed_end=fixed_end,
-                points=ordered_points,
+                use_or_opt=True, use_simulated_annealing=use_annealing,
+                fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
             )
         else:
             route_indices = two_opt(
                 nn_route_indices, weight_matrix,
-                fixed_start=fixed_start,
-                fixed_end=fixed_end,
-                points=ordered_points,
+                fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
             )
 
-    # Координаты точек в нужном порядке
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
-    osrm_profile = osrm_profile_for_transport(profile)
-    geometry = get_osrm_route_geometry(osrm_coords, profile=osrm_profile)
+    geometry = get_osrm_route_geometry(osrm_coords, profile=transport_str)
     geometry_source = "osrm"
-    # Если OSRM недоступен, но есть хотя бы 2 точки — вернём LineString напрямую из поданных координат
+
     if geometry is None:
         if len(route_coords) >= 2:
             geometry = [[lon, lat] for lon, lat in route_coords]
             geometry_source = "direct_fallback"
         else:
-            raise HTTPException(status_code=502, detail="Ошибка запроса к локальному OSRM (проверьте переменные OSRM_*_URL и доступность сервисов)")
+            raise HTTPException(status_code=502, detail="OSRM недоступен")
 
-    # Формируем GeoJSON
-    def route_to_geojson(route_coords, geometry, geometry_source):
-        point_features = []
-        visit_order = 0
-
-        for seq_idx, point_idx in enumerate(route_indices):
-            pt = ordered_points[point_idx]
-            lon, lat = route_coords[seq_idx]
-            is_start = start_index is not None and point_idx == start_index
-
-            props = {
-                "order": seq_idx,
-                "id": pt.id,
-                "priority": pt.priority.value if hasattr(pt.priority, "value") else pt.priority,
-                "is_start": is_start,
-            }
-
-            if not is_start:
-                visit_order += 1
-                props["visit_order"] = visit_order
-
-            point_features.append({
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [lon, lat]},
-                "properties": props,
-            })
-
-        return {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "geometry": {"type": "LineString", "coordinates": geometry},
-                    "properties": {
-                        "name": "route",
-                        "optimize_by": optimize_by,
-                        "matrix_source": weight_source,
-                        "profile": transport_str,
-                        "geometry_source": geometry_source,
-                    }
-                },
-                *point_features,
-            ]
-        }
-    import json
-    geojson = route_to_geojson(route_coords, geometry, geometry_source)
+    geojson = _build_geojson(
+        route_indices, ordered_points, route_coords,
+        geometry, geometry_source, optimize_by, weight_source, transport_str,
+    )
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
+
 
 @router.post("/route/baseline", response_model=RouteResponse)
 async def calculate_baseline_route(
     request: RouteRequest,
-    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
+    profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
 ):
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
@@ -294,7 +287,7 @@ async def calculate_baseline_route(
 @router.post("/route/matrix")
 async def get_distance_matrix(
     request: RouteRequest,
-    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
+    profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
 ):
     sorted_points, _, _, _ = prepare_route_points(request)
     distance_matrix, source = calculate_distance_matrix(sorted_points, transport=profile)
@@ -304,52 +297,38 @@ async def get_distance_matrix(
 @router.post("/route/optimize", response_model=OptimizedRouteResponse)
 async def optimize_route(
     request: RouteRequest,
-    use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
-    use_annealing: bool = Query(False, description="Использовать имитацию отжига для сложных случаев"),
-    profile: TransportProfile = Query(TransportProfile.CAR, description="Вид транспорта: car | walking | transit"),
-    optimize_by: str = Query("duration", description="Метрика оптимизации: duration | distance"),
+    use_advanced: bool = Query(True, description="Продвинутая оптимизация (Or-opt)"),
+    use_annealing: bool = Query(False, description="Имитация отжига"),
+    profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
+    optimize_by: str = Query("duration", description="duration | distance"),
 ):
-    """Оптимизация маршрута с учётом весов (расстояние или время с пробками)."""
     if len(request.points) < 2:
         raise HTTPException(status_code=400, detail="Нужно минимум 2 точки для маршрута")
 
-    # Подготовка точек
     ordered_points, has_street, start_index, end_index = prepare_route_points(request)
-    distance_matrix, _ = calculate_distance_matrix(ordered_points, transport=profile)
-
-    # Рассчитываем матрицу весов по выбранной метрике (duration/distance)
     transport_str = osrm_profile_for_transport(profile)
     weight_matrix, source = calculate_weight_matrix(ordered_points, weight_type=optimize_by, transport=transport_str)
 
-    # Исходный порядок (для сравнения)
     original_order_ids = [p.id for p in ordered_points]
     original_route_indices = list(range(len(ordered_points)))
     original_weight = calculate_route_distance(
         original_route_indices, weight_matrix, ordered_points,
-        fixed_start=(start_index is not None),
-        fixed_end=(end_index is not None),
+        fixed_start=(start_index is not None), fixed_end=(end_index is not None),
     )
 
-    # Nearest Neighbor
     nn_route_indices = nearest_neighbor_route(
         ordered_points, weight_matrix,
-        start_index=start_index or 0,
-        end_index=end_index,
+        start_index=start_index or 0, end_index=end_index,
     )
 
     fixed_start = start_index is not None
     fixed_end = end_index is not None
 
-    # Продвинутая оптимизация
     if use_advanced:
         optimized_route_indices = optimize_route_advanced(
-            nn_route_indices,
-            weight_matrix,
-            use_or_opt=True,
-            use_simulated_annealing=use_annealing,
-            fixed_start=fixed_start,
-            fixed_end=fixed_end,
-            points=ordered_points,
+            nn_route_indices, weight_matrix,
+            use_or_opt=True, use_simulated_annealing=use_annealing,
+            fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
         )
         algorithm = "NN + 2-opt + Or-opt"
         if use_annealing:
@@ -357,36 +336,30 @@ async def optimize_route(
     else:
         optimized_route_indices = two_opt(
             nn_route_indices, weight_matrix,
-            fixed_start=fixed_start,
-            fixed_end=fixed_end,
-            points=ordered_points,
+            fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
         )
         algorithm = "Nearest Neighbor + 2-opt"
 
     optimized_weight = calculate_route_distance(
         optimized_route_indices, weight_matrix, ordered_points,
-        fixed_start=fixed_start,
-        fixed_end=fixed_end,
+        fixed_start=fixed_start, fixed_end=fixed_end,
     )
     improvement = ((original_weight - optimized_weight) / original_weight) * 100 if original_weight > 0 else 0.0
 
     optimized_order_ids = [ordered_points[i].id for i in optimized_route_indices]
 
-    # Преобразуем вес в читаемый формат
     if optimize_by == "duration":
-        original_value = round(original_weight / 60, 1)  # минуты
+        original_value = round(original_weight / 60, 1)
         optimized_value = round(optimized_weight / 60, 1)
-        unit = "min"
     else:
-        original_value = round(original_weight / 1000, 2)  # километры
+        original_value = round(original_weight / 1000, 2)
         optimized_value = round(optimized_weight / 1000, 2)
-        unit = "km"
 
     return OptimizedRouteResponse(
         original_order=original_order_ids,
         sorted_by_street=has_street,
         optimized_order=optimized_order_ids,
-        original_distance_km=original_value,  # переиспользуем поле для совместимости
+        original_distance_km=original_value,
         optimized_distance_km=optimized_value,
         improvement_percent=round(improvement, 2),
         algorithm_used=f"{algorithm} (optimize_by={optimize_by})",
@@ -394,33 +367,22 @@ async def optimize_route(
     )
 
 
-# Тестовый эндпоинт для проверки работы Яндекс API с вашим ключом
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from fastapi import Query as FastAPIQuery
+@router.post("/traffic/update")
+async def update_traffic():
+    try:
+        count = generate_traffic_csv()
+        return {"status": "ok", "records": count, "message": f"Updated {count} records"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/road-events")
-async def get_road_events(
-    lat: float = FastAPIQuery(56.8380, description="Широта центра (Екатеринбург)"),
-    lon: float = FastAPIQuery(60.5975, description="Долгота центра"),
-    radius_m: int = FastAPIQuery(15000, description="Радиус в метрах")
-):
-    conn = psycopg2.connect(
-        host="db",
-        database="traffic_db",
-        user="admin",
-        password="mysecret",
-        cursor_factory=RealDictCursor
-    )
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id, event_type, title, latitude, longitude, severity, detected_at
-        FROM road_events
-        WHERE expires_at > NOW()
-          AND (6371000 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude)))) <= %s
-        ORDER BY detected_at DESC
-    """, (lat, lon, lat, radius_m))
-    events = cur.fetchall()
-    cur.close()
-    conn.close()
-    return {"events": events, "count": len(events)}
+
+@router.get("/traffic/status")
+async def get_traffic_status():
+    status = []
+    for road in STREETS:
+        status.append({
+            "name": road.get("name"),
+            "speed": get_current_speed(road),
+            "base_speed": road.get("base_speed"),
+        })
+    return {"streets": status}
