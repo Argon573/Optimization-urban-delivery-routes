@@ -5,7 +5,16 @@ import { useIsDesktop } from '../../../hooks/useIsDesktop';
 import styles from './RouteActions.module.scss';
 
 const RouteActions = () => {
-    const { points, buildRoute, resetAll, isBuilding } = useRoute();
+    const {
+        points,
+        buildRoute,
+        resetAll,
+        isBuilding,
+        isAutoRouteEnabled,
+        isWeakNetwork,
+        isNetworkChecking,
+        buildError,
+    } = useRoute();
     const navigate = useNavigate();
     const isDesktop = useIsDesktop();
     const [error, setError] = useState('');
@@ -34,15 +43,29 @@ const RouteActions = () => {
         resetAll();
     };
 
+    const displayError = error || buildError;
+
     return (
         <div className={styles.actions}>
-            <button type="button" className={styles.buildButton} onClick={handleBuild} disabled={isBuilding}>
-                Построить
-            </button>
+            {!isAutoRouteEnabled && (
+                <button
+                    type="button"
+                    className={styles.buildButton}
+                    onClick={handleBuild}
+                    disabled={isBuilding || isNetworkChecking}
+                >
+                    Построить маршрут
+                </button>
+            )}
+            {isWeakNetwork && !isNetworkChecking && (
+                <p className={styles.networkHint}>
+                    Медленное соединение — маршрут обновится после нажатия «Построить маршрут».
+                </p>
+            )}
             <button type="button" className={styles.resetButton} onClick={handleReset}>
                 Сбросить
             </button>
-            {error && <p className={styles.error}>{error}</p>}
+            {displayError && <p className={styles.error}>{displayError}</p>}
         </div>
     );
 };

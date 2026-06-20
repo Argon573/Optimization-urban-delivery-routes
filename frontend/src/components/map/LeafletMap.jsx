@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const RouteGeoJsonLayer = () => {
-    const { routeGeoJson } = useRoute();
+    const { routeGeoJson, routeCacheKey } = useRoute();
 
     if (!routeGeoJson) {
         return null;
@@ -26,6 +26,7 @@ const RouteGeoJsonLayer = () => {
 
     return (
         <GeoJSON
+            key={routeCacheKey ?? 'route'}
             data={routeGeoJson}
             filter={(f) => {
                 const type = f?.geometry?.type;

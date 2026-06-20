@@ -1,7 +1,19 @@
 import { API_BASE } from './config';
 
-export async function fetchRouteGeoJson(startPoint, endPoint, points, transportProfile = 'car') {
+export async function fetchRouteGeoJson(
+    startPoint,
+    endPoint,
+    points,
+    transportProfile = 'car',
+    { lite = false, signal } = {},
+) {
     const params = new URLSearchParams({ profile: transportProfile });
+
+    if (lite) {
+        params.set('use_advanced', 'false');
+        params.set('use_annealing', 'false');
+    }
+
     const response = await fetch(`${API_BASE}/route/geojson?${params}`, {
         method: 'POST',
         headers: {
@@ -12,6 +24,7 @@ export async function fetchRouteGeoJson(startPoint, endPoint, points, transportP
             ...(endPoint && { end_point: endPoint }),
             points,
         }),
+        signal,
     });
 
     if (!response.ok) {

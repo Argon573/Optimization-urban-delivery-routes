@@ -4,6 +4,7 @@ import LeafletMap from './LeafletMap';
 import MapFocusController from './MapFocusController';
 import MapClickAddPoint from './MapClickAddPoint';
 import WaypointMarker from './WaypointMarker';
+import RouteMapLoadingOverlay from './RouteMapLoadingOverlay';
 import { useRoute } from '../../context/RouteContext';
 import { getPriorityColor } from '../../constants/pointPriority';
 import { POINT_PRIORITIES } from '../../constants/pointPriority';
@@ -15,7 +16,9 @@ import './map.scss';
 const DEFAULT_CENTER = [56.840508, 60.650206];
 
 const RouteMapView = () => {
-    const { points, startPoint, routeGeoJson } = useRoute();
+    const {
+        points, startPoint, routeGeoJson, isAutoBuilding, isNetworkChecking,
+    } = useRoute();
 
     const visitOrders = useMemo(
         () => parseRouteVisitOrders(routeGeoJson),
@@ -73,6 +76,11 @@ const RouteMapView = () => {
                     );
                 })}
             </LeafletMap>
+            {(isAutoBuilding || isNetworkChecking) && (
+                <RouteMapLoadingOverlay
+                    label={isNetworkChecking ? 'Проверяем соединение…' : 'Обновляем маршрут…'}
+                />
+            )}
         </div>
     );
 };

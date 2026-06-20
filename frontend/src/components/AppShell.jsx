@@ -7,6 +7,7 @@ import RouteBuildModal from './modals/RouteBuildModal';
 const AppShell = ({ children }) => {
     const {
         isBuilding,
+        isAutoBuilding,
         buildProgress,
         applyUserLocation,
         setGeolocationStatus,
@@ -35,7 +36,7 @@ const AppShell = ({ children }) => {
                     onLater={handleLaterGeo}
                 />
             )}
-            {isBuilding && <RouteBuildModal progress={buildProgress} />}
+            {isBuilding && !isAutoBuilding && <RouteBuildModal progress={buildProgress} />}
         </>
     );
 };
