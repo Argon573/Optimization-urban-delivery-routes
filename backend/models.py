@@ -60,7 +60,7 @@ class GenerateResponse(BaseModel):
 
 class RouteRequest(BaseModel):
     """Запрос на расчет маршрута"""
-    points: List[Point] = Field(..., min_items=2, max_items=50, description="Список точек для маршрута")
+    points: List[Point] = Field(..., min_length=2, max_length=50, description="Список точек для маршрута")
     start_point: Optional[Point] = Field(None, description="Начальная точка (опционально)")
     end_point: Optional[Point] = Field(None, description="Конечная точка (опционально)")
 
