@@ -2,11 +2,12 @@ import { useRef } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 import { useRoute } from '../../context/RouteContext';
 import { reverseGeocode } from '../../api/reverseGeocode';
+import { ROUTE_POINTS_MAX } from '../../constants/routeLimits';
 
 const CLICK_DELAY_MS = 280;
 
 const MapClickAddPoint = () => {
-    const { addPoint } = useRoute();
+    const { addPoint, points } = useRoute();
     const map = useMap();
     const clickTimerRef = useRef(null);
 
@@ -17,6 +18,10 @@ const MapClickAddPoint = () => {
             }
 
             const { lat, lng } = event.latlng;
+
+            if (points.length >= ROUTE_POINTS_MAX) {
+                return;
+            }
 
             clickTimerRef.current = setTimeout(async () => {
                 clickTimerRef.current = null;
