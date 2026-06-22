@@ -1,7 +1,9 @@
+import { ROUTE_POINTS_MIN, ROUTE_POINTS_MAX } from '../../../constants/routeLimits';
+
 export const RADIUS_MIN = 1;
 export const RADIUS_MAX = 50;
-export const POINTS_MIN = 2;
-export const POINTS_MAX = 50;
+export const POINTS_MIN = ROUTE_POINTS_MIN;
+export const POINTS_MAX = ROUTE_POINTS_MAX;
 
 export function validateGenerationForm(radiusRaw, pointsCountRaw) {
     const errors = {};

@@ -4,7 +4,10 @@ import { useDismissOnOutsideClick } from '../../../hooks/useDismissOnOutsideClic
 import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { IoMdCheckmark } from 'react-icons/io';
+import { ROUTE_POINTS_MAX } from '../../../constants/routeLimits';
 import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
+
+const POINTS_LIMIT_ERROR = `Максимум ${ROUTE_POINTS_MAX} точек`;
 
 const WaypointInput = ({ onSelect }) => {
     const [query, setQuery] = useState('');
@@ -21,18 +24,27 @@ const WaypointInput = ({ onSelect }) => {
 
     const fieldRef = useDismissOnOutsideClick(showSuggestions, closeSuggestions);
 
-    const handleSelect = (item) => {
-        const fullAddress = `${item.street || ''} ${item.name || ''}, Екатеринбург`;
-
-        onSelect({
-            address: fullAddress,
-            latitude: item.lat,
-            longitude: item.lon,
-        });
+    const tryAddPoint = (point) => {
+        const added = onSelect(point);
+        if (added === false) {
+            setError(POINTS_LIMIT_ERROR);
+            return false;
+        }
 
         setQuery('');
         setError('');
         setSuggestionsOpen(false);
+        return true;
+    };
+
+    const handleSelect = (item) => {
+        const fullAddress = `${item.street || ''} ${item.name || ''}, Екатеринбург`;
+
+        tryAddPoint({
+            address: fullAddress,
+            latitude: item.lat,
+            longitude: item.lon,
+        });
     };
 
     const handleManualSubmit = async () => {
@@ -63,14 +75,11 @@ const WaypointInput = ({ onSelect }) => {
                 return;
             }
 
-            onSelect({
+            tryAddPoint({
                 address: query,
                 latitude: geocode.lat,
                 longitude: geocode.lon,
             });
-
-            setQuery('');
-            setError('');
         } catch (err) {
             console.error(err);
             setError('Ошибка при обработке адреса. Попробуйте еще раз.');

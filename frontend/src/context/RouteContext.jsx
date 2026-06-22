@@ -7,6 +7,7 @@ import { buildRouteCacheKey } from '../utils/routeCacheKey';
 import { runSimulatedProgress } from '../utils/simulatedProgress';
 import { saveToHistory, formatRouteLabel } from '../services/routeStorage';
 import { POINT_PRIORITIES } from '../constants/pointPriority';
+import { ROUTE_POINTS_MAX } from '../constants/routeLimits';
 import { resolvePointName } from '../utils/pointName';
 import { useNetworkQuality } from '../hooks/useNetworkQuality';
 
@@ -155,7 +156,15 @@ export const RouteProvider = ({ children }) => {
     }, [invalidateRouteIfStale]);
 
     const addPoint = useCallback((point) => {
+        if (pointsRef.current.length >= ROUTE_POINTS_MAX) {
+            return false;
+        }
+
         setPoints((prev) => {
+            if (prev.length >= ROUTE_POINTS_MAX) {
+                return prev;
+            }
+
             const next = [...prev, {
                 ...point,
                 id: point.id ?? (nextPointIdRef.current += 1),
@@ -166,6 +175,7 @@ export const RouteProvider = ({ children }) => {
             return next;
         });
         invalidateRouteIfStale();
+        return true;
     }, [invalidateRouteIfStale]);
 
     const updatePoint = useCallback((id, updates) => {
@@ -195,13 +205,14 @@ export const RouteProvider = ({ children }) => {
     }, [invalidateRouteIfStale]);
 
     const setGeneratedPoints = useCallback((newPoints) => {
-        const maxId = newPoints.reduce(
+        const limitedPoints = newPoints.slice(0, ROUTE_POINTS_MAX);
+        const maxId = limitedPoints.reduce(
             (max, point) => Math.max(max, typeof point.id === 'number' ? point.id : 0),
             nextPointIdRef.current,
         );
         nextPointIdRef.current = maxId;
-        pointsRef.current = newPoints;
-        setPoints(newPoints);
+        pointsRef.current = limitedPoints;
+        setPoints(limitedPoints);
         invalidateRouteIfStale();
     }, [invalidateRouteIfStale]);
 
@@ -478,6 +489,7 @@ export const RouteProvider = ({ children }) => {
     return (
         <RouteContext.Provider value={{
             points,
+            routePointsMax: ROUTE_POINTS_MAX,
             addPoint,
             updatePoint,
             removePoint,
