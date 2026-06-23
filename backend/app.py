@@ -25,7 +25,7 @@ app.include_router(router)
 from traffic.traffic_updater import TrafficUpdater
 from traffic.traffic_generator import generate_traffic_csv
 
-traffic_updater = TrafficUpdater(interval_seconds=600)
+traffic_updater = TrafficUpdater(interval_seconds=14400)
 
 
 @app.on_event("startup")

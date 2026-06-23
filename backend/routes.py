@@ -26,7 +26,6 @@ from services import (
     prepare_route_points,
 )
 from utils import (
-    get_osrm_distance_wrapper,
     resolve_points_with_coordinates,
     osrm_profile_for_transport,
     get_osrm_route_geometry,
@@ -59,19 +58,12 @@ async def root():
 
 
 @router.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "osrm_available": get_osrm_distance_wrapper(
-            Point(lat=55.7558, lon=37.6176),
-            Point(lat=55.7658, lon=37.6276),
-        )
-        is not None,
-    }
+def health_check():
+    return {"status": "healthy"}
 
 
 @router.get("/address/photon_suggest")
-async def photon_suggest_address(
+def photon_suggest_address(
     q: str = FastAPIQuery(..., description="Часть адреса для поиска"),
     city: str = FastAPIQuery(None, description="Город для фильтрации результатов"),
     limit: int = FastAPIQuery(5, description="Максимум результатов"),
@@ -111,7 +103,7 @@ async def photon_suggest_address(
 
 
 @router.post("/geocode")
-async def geocode(request: AddressRequest):
+def geocode(request: AddressRequest):
     coords = geocode_address(request.city, request.street, request.house)
     if coords is None:
         raise HTTPException(status_code=404, detail="Не удалось найти координаты по указанному адресу")
@@ -120,7 +112,7 @@ async def geocode(request: AddressRequest):
 
 
 @router.post("/address/validate")
-async def validate_address(request: AddressRequest):
+def validate_address(request: AddressRequest):
     coords = geocode_address(request.city, request.street, request.house)
     if coords is None:
         return {"valid": False, "message": "Адрес не найден"}
@@ -129,7 +121,7 @@ async def validate_address(request: AddressRequest):
 
 
 @router.post("/generate", response_model=GenerateResponse)
-async def generate_points(request: GenerateRequest):
+def generate_points(request: GenerateRequest):
     points = []
     center = request.city_center
     radius_deg = request.radius_km / 111.0
@@ -199,7 +191,7 @@ def _build_geojson(route_indices, ordered_points, route_coords, geometry, geomet
 
 
 @router.post("/route/geojson")
-async def route_geojson(
+def route_geojson(
     request: RouteRequest,
     mode: str = Query("optimized", description="Порядок точек: original | nn | optimized"),
     use_advanced: bool = Query(True, description="Использовать продвинутую оптимизацию (Or-opt)"),
@@ -260,7 +252,7 @@ async def route_geojson(
 
 
 @router.post("/route/baseline", response_model=RouteResponse)
-async def calculate_baseline_route(
+def calculate_baseline_route(
     request: RouteRequest,
     profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
 ):
@@ -285,7 +277,7 @@ async def calculate_baseline_route(
 
 
 @router.post("/route/matrix")
-async def get_distance_matrix(
+def get_distance_matrix(
     request: RouteRequest,
     profile: TransportProfile = Query(TransportProfile.CAR, description="car | walking | transit"),
 ):
@@ -295,7 +287,7 @@ async def get_distance_matrix(
 
 
 @router.post("/route/optimize", response_model=OptimizedRouteResponse)
-async def optimize_route(
+def optimize_route(
     request: RouteRequest,
     use_advanced: bool = Query(True, description="Продвинутая оптимизация (Or-opt)"),
     use_annealing: bool = Query(False, description="Имитация отжига"),
@@ -368,7 +360,7 @@ async def optimize_route(
 
 
 @router.post("/traffic/update")
-async def update_traffic():
+def update_traffic():
     try:
         count = generate_traffic_csv()
         return {"status": "ok", "records": count, "message": f"Updated {count} records"}
