@@ -13,7 +13,7 @@ services:
     volumes:
       - ./backend:/app
       - ./osrm-data/car:/traffic
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 120 --limit-concurrency 20
     restart: unless-stopped
 
   osrm-car:

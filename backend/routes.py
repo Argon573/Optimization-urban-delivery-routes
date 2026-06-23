@@ -1,10 +1,14 @@
 import json
 import math
 import random
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 import requests
 from fastapi import APIRouter, HTTPException, Query, Query as FastAPIQuery
 from fastapi.responses import Response
+
+TSP_TIMEOUT = 30
+_tsp_pool = ThreadPoolExecutor(max_workers=4)
 
 from models import (
     GenerateRequest,
@@ -208,29 +212,27 @@ def route_geojson(
 
     if mode == "original":
         route_indices = list(range(len(ordered_points)))
-    elif mode == "nn":
-        route_indices = nearest_neighbor_route(
-            ordered_points, weight_matrix,
-            start_index=start_index or 0, end_index=end_index,
-        )
     else:
-        nn_route_indices = nearest_neighbor_route(
-            ordered_points, weight_matrix,
-            start_index=start_index or 0, end_index=end_index,
-        )
-        fixed_start = start_index is not None
-        fixed_end = end_index is not None
-        if use_advanced:
-            route_indices = optimize_route_advanced(
-                nn_route_indices, weight_matrix,
-                use_or_opt=True, use_simulated_annealing=use_annealing,
-                fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
+        def _compute_tsp():
+            nn = nearest_neighbor_route(
+                ordered_points, weight_matrix,
+                start_index=start_index or 0, end_index=end_index,
             )
-        else:
-            route_indices = two_opt(
-                nn_route_indices, weight_matrix,
-                fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
-            )
+            fs = start_index is not None
+            fe = end_index is not None
+            if use_advanced:
+                return optimize_route_advanced(
+                    nn, weight_matrix,
+                    use_or_opt=True, use_simulated_annealing=use_annealing,
+                    fixed_start=fs, fixed_end=fe, points=ordered_points,
+                )
+            return two_opt(nn, weight_matrix, fixed_start=fs, fixed_end=fe, points=ordered_points)
+
+        try:
+            future = _tsp_pool.submit(_compute_tsp)
+            route_indices = future.result(timeout=TSP_TIMEOUT)
+        except FuturesTimeoutError:
+            raise HTTPException(status_code=504, detail="Расчёт маршрута занял слишком много времени. Уменьшите количество точек.")
 
     route_coords = [(ordered_points[i].lon, ordered_points[i].lat) for i in route_indices]
     osrm_coords = ";".join([f"{lon},{lat}" for lon, lat in route_coords])
@@ -316,20 +318,29 @@ def optimize_route(
     fixed_start = start_index is not None
     fixed_end = end_index is not None
 
-    if use_advanced:
-        optimized_route_indices = optimize_route_advanced(
+    def _compute_optimize():
+        if use_advanced:
+            return optimize_route_advanced(
+                nn_route_indices, weight_matrix,
+                use_or_opt=True, use_simulated_annealing=use_annealing,
+                fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
+            )
+        return two_opt(
             nn_route_indices, weight_matrix,
-            use_or_opt=True, use_simulated_annealing=use_annealing,
             fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
         )
+
+    try:
+        future = _tsp_pool.submit(_compute_optimize)
+        optimized_route_indices = future.result(timeout=TSP_TIMEOUT)
+    except FuturesTimeoutError:
+        raise HTTPException(status_code=504, detail="Оптимизация маршрута заняла слишком много времени. Уменьшите количество точек.")
+
+    if use_advanced:
         algorithm = "NN + 2-opt + Or-opt"
         if use_annealing:
             algorithm += " + Simulated Annealing"
     else:
-        optimized_route_indices = two_opt(
-            nn_route_indices, weight_matrix,
-            fixed_start=fixed_start, fixed_end=fixed_end, points=ordered_points,
-        )
         algorithm = "Nearest Neighbor + 2-opt"
 
     optimized_weight = calculate_route_distance(
