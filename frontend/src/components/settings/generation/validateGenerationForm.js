@@ -1,7 +1,7 @@
-import { ROUTE_POINTS_MIN, ROUTE_POINTS_MAX } from '../../../constants/routeLimits';
+import { ROUTE_POINTS_MIN, ROUTE_POINTS_MAX, GENERATION_RADIUS_MIN, GENERATION_RADIUS_MAX } from '../../../constants/routeLimits';
 
-export const RADIUS_MIN = 1;
-export const RADIUS_MAX = 50;
+export const RADIUS_MIN = GENERATION_RADIUS_MIN;
+export const RADIUS_MAX = GENERATION_RADIUS_MAX;
 export const POINTS_MIN = ROUTE_POINTS_MIN;
 export const POINTS_MAX = ROUTE_POINTS_MAX;
 

@@ -46,8 +46,8 @@ class Point(BaseModel):
 class GenerateRequest(BaseModel):
     """Запрос на генерацию точек"""
     city_center: Point = Field(..., description="Центр города")
-    radius_km: float = Field(5.0, ge=1, le=50, description="Радиус в км (1-50)")
-    points_count: int = Field(10, ge=2, le=50, description="Количество точек (2-50)")
+    radius_km: float = Field(5.0, ge=1, le=25, description="Радиус в км (1-25)")
+    points_count: int = Field(10, ge=2, le=25, description="Количество точек (2-25)")
 
 
 class GenerateResponse(BaseModel):
@@ -60,7 +60,7 @@ class GenerateResponse(BaseModel):
 
 class RouteRequest(BaseModel):
     """Запрос на расчет маршрута"""
-    points: List[Point] = Field(..., min_length=2, max_length=50, description="Список точек для маршрута")
+    points: List[Point] = Field(..., min_length=2, max_length=25, description="Список точек для маршрута")
     start_point: Optional[Point] = Field(None, description="Начальная точка (опционально)")
     end_point: Optional[Point] = Field(None, description="Конечная точка (опционально)")
 
