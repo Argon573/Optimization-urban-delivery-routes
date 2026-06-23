@@ -23,12 +23,12 @@ jobs:
             cd /home/developer/delivery-optimizer
             git fetch --all
             git reset --hard origin/master
-            
-            # Деплой бэкенда
-            docker compose down
-            docker compose build --no-cache
+
+            # Деплой бэкенда (без --no-cache, чтобы не жрать память)
+            docker compose down --remove-orphans
+            docker compose build
             docker compose up -d
-            
+
             # Деплой фронтенда
             cd frontend
             npm install
