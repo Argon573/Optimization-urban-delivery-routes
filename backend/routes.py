@@ -150,14 +150,24 @@ def generate_points(request: GenerateRequest):
     )
 
 
-def _build_geojson(route_indices, ordered_points, route_coords, geometry, geometry_source, optimize_by, weight_source, transport_str):
+def _build_geojson(
+    route_indices,
+    ordered_points,
+    route_coords,
+    geometry,
+    geometry_source,
+    optimize_by,
+    weight_source,
+    transport_str,
+    has_fixed_start: bool = False,
+):
     point_features = []
     visit_order = 0
 
     for seq_idx, point_idx in enumerate(route_indices):
         pt = ordered_points[point_idx]
         lon, lat = route_coords[seq_idx]
-        is_start = (seq_idx == 0)
+        is_start = has_fixed_start and seq_idx == 0
 
         props = {
             "order": seq_idx,
@@ -249,6 +259,7 @@ def route_geojson(
     geojson = _build_geojson(
         route_indices, ordered_points, route_coords,
         geometry, geometry_source, optimize_by, weight_source, transport_str,
+        has_fixed_start=start_index is not None,
     )
     return Response(content=json.dumps(geojson, ensure_ascii=False), media_type="application/geo+json")
 
