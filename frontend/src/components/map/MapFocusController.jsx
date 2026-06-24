@@ -11,9 +11,18 @@ const MapFocusController = () => {
             return;
         }
 
-        map.flyTo([mapFocus.latitude, mapFocus.longitude], Math.max(map.getZoom(), 15), {
-            duration: 0.8,
-        });
+        const { latitude, longitude } = mapFocus;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return;
+        }
+
+        try {
+            map.flyTo([latitude, longitude], Math.max(map.getZoom(), 15), {
+                duration: 0.8,
+            });
+        } catch {
+            // ignore invalid map coordinates
+        }
     }, [map, mapFocus]);
 
     return null;

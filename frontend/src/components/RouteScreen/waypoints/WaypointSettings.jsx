@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LuMapPin } from 'react-icons/lu';
 import { IoMdCheckmark } from 'react-icons/io';
 import layoutStyles from '../../layouts/layout.module.scss';
@@ -8,12 +9,15 @@ import { useDismissOnOutsideClick } from '../../../hooks/useDismissOnOutsideClic
 import { geocodeAddress } from '../../../api/geocodeAddress';
 import { parseAddress } from '../../../utils/parseAddress';
 import { PRIORITY_OPTIONS, POINT_PRIORITIES } from '../../../constants/pointPriority';
+import { useIsDesktop } from '../../../hooks/useIsDesktop';
 import { resolvePointName } from '../../../utils/pointName';
 import fieldStyles from '../../../shared/AddressField/AddressField.module.scss';
 import styles from './WaypointSettings.module.scss';
 
 const WaypointSettings = ({ point, listIndex, onBack }) => {
     const { updatePoint, removePoint, focusOnMap } = useRoute();
+    const navigate = useNavigate();
+    const isDesktop = useIsDesktop();
     const [priority, setPriority] = useState(point.priority ?? POINT_PRIORITIES.NORMAL);
     const [name, setName] = useState(point.name?.trim() || point.address?.trim() || '');
     const [address, setAddress] = useState(point.address);
@@ -142,7 +146,22 @@ const WaypointSettings = ({ point, listIndex, onBack }) => {
     };
 
     const handleShowOnMap = () => {
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            setAddressError('Координаты точки не определены. Подтвердите адрес.');
+            return;
+        }
+
         focusOnMap(latitude, longitude);
+        onBack();
+
+        if (!isDesktop) {
+            navigate('/');
+        }
+    };
+
+    const handlePriorityChange = (value) => {
+        setPriority(value);
+        updatePoint(point.id, { priority: value });
     };
 
     const handleAddressKeyDown = (event) => {
@@ -250,7 +269,7 @@ const WaypointSettings = ({ point, listIndex, onBack }) => {
                                     name={`priority-${point.id}`}
                                     value={option.value}
                                     checked={priority === option.value}
-                                    onChange={() => setPriority(option.value)}
+                                    onChange={() => handlePriorityChange(option.value)}
                                     className={styles.priorityRadio}
                                 />
                                 <span className={styles.priorityRadioVisual} />

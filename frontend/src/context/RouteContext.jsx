@@ -467,6 +467,10 @@ export const RouteProvider = ({ children }) => {
     }, [invalidateRoute]);
 
     const focusOnMap = useCallback((latitude, longitude) => {
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return;
+        }
+
         setMapFocus({ latitude, longitude, nonce: Date.now() });
     }, []);
 

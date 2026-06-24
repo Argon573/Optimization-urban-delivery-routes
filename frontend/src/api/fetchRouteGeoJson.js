@@ -28,13 +28,19 @@ export async function fetchRouteGeoJson(
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        const detail = errorBody.detail;
-        const message = typeof detail === 'string'
-            ? detail
-            : Array.isArray(detail)
-                ? detail.map((e) => e.msg ?? String(e)).join(', ')
-                : 'Не удалось построить маршрут';
+        const contentType = response.headers.get('content-type') ?? '';
+        let message = `Ошибка сервера (${response.status})`;
+
+        if (contentType.includes('application/json')) {
+            const errorBody = await response.json().catch(() => ({}));
+            const detail = errorBody.detail;
+            message = typeof detail === 'string'
+                ? detail
+                : Array.isArray(detail)
+                    ? detail.map((e) => e.msg ?? String(e)).join(', ')
+                    : message;
+        }
+
         throw new Error(message);
     }
 

@@ -3,9 +3,12 @@ import Header from './header/Header';
 import NavigationBar from './NavigationBar/NavigationBar';
 import RouteMapView from '../map/RouteMapView';
 import YandexMetrikaTracker from '../../analytics/YandexMetrikaTracker';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import layoutStyles from './layout.module.scss';
 
 const Layout = () => {
+    const isDesktop = useIsDesktop();
+
     return (
         <div className={layoutStyles.layout}>
             <YandexMetrikaTracker />
@@ -26,9 +29,11 @@ const Layout = () => {
                     <NavigationBar variant="desktop" />
                 </aside>
 
-                <div className={layoutStyles.mapPane}>
-                    <RouteMapView />
-                </div>
+                {isDesktop && (
+                    <div className={layoutStyles.mapPane}>
+                        <RouteMapView />
+                    </div>
+                )}
             </div>
 
             <NavigationBar variant="mobile" />
